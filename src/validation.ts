@@ -16,6 +16,7 @@ export type ValidationResult = boolean | ValidationParameters;
 
 /**
  * Describes a function that checks whether a given value is valid.
+ *
  * Should return true if valid, false or {@link ValidationParameters} otherwise.
  * The result may also be returned as a promise if async logic is required (e.g. to make a rest call that checks whether a username is available).
  * Running expensive operations at a high frequency is probably not a good idea though.

@@ -14,7 +14,8 @@
     "build": "rollup --config",
     "test": "jest",
     "docs": "typedoc",
-    "preversion": "npm run test && npm run build && npm run update-exports && npm run docs",
+    "commit-docs": "git add ./docs && git commit -m 'updated docs' -- ./docs",
+    "preversion": "npm run test && npm run build && npm run update-exports && npm run docs && npm run commit-docs",
     "prepublishOnly": "git push && git push --tags"
   },
   "keywords": [

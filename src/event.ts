@@ -80,9 +80,12 @@ export class EventSource<T extends AbstractEvent> {
 
   /**
    * Call the current handlers according to the {@link handle | priority they were registered with}.
+   *
    * It's important to realise that even though handlers are free to perform asynchronous actions, they're processed sequentially.
    * If a handler returns a promise, further processing waits until it settles.
+   *
    * Handlers can {@link AbstractEvent.handled | stop} further processing.
+   *
    * @returns a promise that settles when processing is done
    */
   async submit(event: T): Promise<void> {
