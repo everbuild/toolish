@@ -14,7 +14,7 @@ export type IntervalHandle = ReturnType<typeof setInterval>;
 
 /**
  * Shorthand to create a promise that resolves after the given milliseconds.
- * @see Delay
+ * @see {@link Delay}
  */
 export function delay(ms: number): Promise<void> {
   return new Delay(ms).promise;

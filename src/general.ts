@@ -15,7 +15,7 @@ export interface Cancel {
  * It's generally advisable to call {@link free} as soon as it's no longer needed.
  * It's assumed that it's disposable, i.e. should no longer be used once freed.
  * Correct implementation is the responsibility of the user, no attempt is usually made to enforce this.
- * @see ReusableResource for an interface that is intended for reuse.
+ * @see {@link ReusableResource} for an interface that is intended for reuse.
  */
 export interface Resource {
   free(): void;

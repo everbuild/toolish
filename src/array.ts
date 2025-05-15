@@ -145,7 +145,7 @@ export function filterDuplicates<T>(array: Array<T>): Array<T> {
 /**
  * Removes the first matching element from the given array or adds it if the array doesn't contain the element yet.
  * @returns the original element if removed, undefined if added
- * @see filterDuplicates to make sure an array contains unique values
+ * @see {@link filterDuplicates} to make sure an array contains unique values
  */
 export function toggle<T>(array: Array<T>, element: T): T | undefined {
   const result = remove(array, element);

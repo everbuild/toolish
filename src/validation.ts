@@ -10,7 +10,7 @@ import { isPresent, Transformation } from './types';
 export type ValidationParameters = Record<string, any>;
 
 /**
- * @see Validator
+ * See {@link Validator}
  */
 export type ValidationResult = boolean | ValidationParameters;
 

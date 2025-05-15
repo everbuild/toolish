@@ -63,7 +63,7 @@ export class EventSource<T extends AbstractEvent> {
    * @param handler
    * @param priority handlers are called by ascending priority (e.g. priority 0 is called before 1)
    * @returns a function that calls {@link unhandle} for you.
-   * @see EventHandler for more details
+   * @see {@link EventHandler} for more details
    */
   handle(handler: EventHandler<T>, priority = 1000): Cancel {
     this.handlers.push({ handler, priority });

@@ -112,6 +112,9 @@ class ReactiveConsumer<T> implements Subscriber, Resource {
 /**
  * Base class representing a reactive value.
  * As a main API entry-point, it provides a number of static factory functions to convert between normal and appropriate reactive values.
+ *
+ * @see {@link ReactiveValue} for a subclass that wraps an actual value
+ * @see {@link ReactiveDerivation} for a subclass that produces a new reactive value based on other reactive values
  */
 export abstract class Reactive<T> implements Publisher {
   static UNNESTED_CACHE = new WeakReactiveCache();
@@ -165,7 +168,7 @@ export abstract class Reactive<T> implements Publisher {
    * If the resulting value is also reactive it is also unwrapped, and so on.
    * Optionally pass in a {@link SubscriptionTracker} to track reactivity.
    * WARNING: bypasses reactivity if no tracker is provided!
-   * @see #flatten for a similar operation.
+   * @see {@link flatten} for a similar operation.
    */
   static unwrap<T>(value: T, tracker?: SubscriptionTracker): UnreactiveDeep<T> {
     while (value instanceof Reactive) {
@@ -351,11 +354,18 @@ export abstract class Reactive<T> implements Publisher {
   }
 }
 
+/**
+ * Wraps an actual value.
+ *
+ * @see {@link ReactiveObject} for a subclass that offers better support for object values
+ * @see {@link ReactiveArray} for a subclass that offers better support for array values
+ * @see {@link ReactiveDerivation} for a class that derives a value from other reactive values
+ */
 export class ReactiveValue<T> extends Reactive<T> implements Cloneable<ReactiveValue<T>> {
   /**
    * Creates a new ReactiveValue with an initial value.
-   * @see #of if your value may already be reactive or reuse a cached reactive value.
-   * @see #nest to also convert nested array elements or object properties.
+   * @see {@link of} if your value may already be reactive or reuse a cached reactive value.
+   * @see {@link nest} to also convert nested array elements or object properties.
    */
   constructor(
     protected value: T,
@@ -385,8 +395,7 @@ export class ReactiveValue<T> extends Reactive<T> implements Cloneable<ReactiveV
    * The main advantages of patch are that update handling is restricted to where it's really needed and reduced memory overhead.
    * @param source unreactive source value to use
    * @param cache cache to use when {@link Reactive.nest resolving nested values}
-   * @see ReactiveObject#patch
-   * @see ReactiveArray#patch
+   * @see {@link ReactiveObject.patch} and {@link ReactiveArray.patch}
    */
   patch(source: UnreactiveNested<T>, cache?: ReactiveCache): void {
     this.set(source as T);
@@ -418,6 +427,9 @@ abstract class ReactiveComplexValue<T> extends ReactiveValue<T> {
   }
 }
 
+/**
+ * Wraps an object, supports {@link patch} and offers convenient methods to reactively mutate the object.
+ */
 export class ReactiveObject<T extends Record<any, ReactiveValue<any>>> extends ReactiveComplexValue<T> {
   /**
    * Defines how properties are removed. By default, they're assigned to `undefined`.
@@ -426,8 +438,8 @@ export class ReactiveObject<T extends Record<any, ReactiveValue<any>>> extends R
 
   /**
    * Patches, adds or removes properties as needed to match the given source object.
-   * @see #REMOVAL_STRATEGY to tweak how properties are removed.
-   * @see ReactiveValue#patch for more details.
+   * @see {@link REMOVAL_STRATEGY} to tweak how properties are removed.
+   * @see {@link ReactiveValue.patch} for more details.
    */
   patch(source: UnreactiveNested<T>, cache?: ReactiveCache): void {
     const allKeys = Object.keys({ ...this.value, ...source }) as Array<keyof T>;
@@ -457,10 +469,13 @@ export class ReactiveObject<T extends Record<any, ReactiveValue<any>>> extends R
   }
 }
 
+/**
+ * Wraps an array, supports {@link patch} and offers convenient methods to reactively mutate the array.
+ */
 export class ReactiveArray<T extends ReactiveValue<any>> extends ReactiveComplexValue<Array<T>> {
   /**
    * Patches, adds or removes elements as needed to match the given source array.
-   * @see ReactiveValue#patch for more details.
+   * @see {@link ReactiveValue.patch} for more details.
    */
   patch(source: Array<UnreactiveNested<T>>, cache?: ReactiveCache): void {
     source.forEach((v, i) => this.setComponent(i, v, cache));
@@ -566,9 +581,6 @@ export class ReactiveDerivation<T> extends Reactive<T> implements Subscriber, Su
   private value?: T;
   private subscriptions = new Set<Publisher>();
 
-  /**
-   * @see ReactiveDerivation
-   */
   constructor(
     private derivation: Derivation<T>,
   ) {
