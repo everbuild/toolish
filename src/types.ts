@@ -1,6 +1,3 @@
-/**
- * @file Utilities that help write better TypeScript
- */
 import { isObject } from './object';
 
 export interface GenericFunction<A extends Array<any>, R> {

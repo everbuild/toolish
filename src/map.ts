@@ -1,10 +1,6 @@
 import { Transformation } from './types';
 
 /**
- * @file Utilities for working with maps
- */
-
-/**
  * If the given map contains an entry for the given key, returns its value,
  * otherwise adds a new entry with the given value and returns that.
  * This is often a simpler alternative to a multimap, e.g.:

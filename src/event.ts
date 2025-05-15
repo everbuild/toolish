@@ -5,14 +5,10 @@ import { getOrCreateEntry } from './map';
 import { Constructor } from './types';
 
 /**
- * @file Event source and bus mechanism that allows decoupled communication between modules (not to be confused with DOM events)
- */
-
-/**
  * Function that receives an event.
  * May return a promise to indicate when they're done.
  * Other return values are ignored.
- * Set {@link AbstractEvent#handled} to true to stop all further event processing.
+ * Set {@link AbstractEvent.handled} to true to stop all further event processing.
  */
 export interface EventHandler<Event> {
   (event: Event): MaybePromiseLike<any>;
@@ -22,10 +18,13 @@ export interface EventHandler<Event> {
  * Extend this class to model your own events with any needed data (and behavior).
  */
 export abstract class AbstractEvent {
+  /**
+   * {@link EventHandler}s can set this to true to stop all further event processing.
+   */
   handled = false;
 
   /**
-   * Used by {@link EventBus#submit} to determine what event sources to process and in what order.
+   * Used by {@link EventBus.submit} to determine what event sources to process and in what order.
    * This default implementation returns the class hierarchy from the current class upto AbstractEvent.
    * This means that subclasses (more specific) get processed before superclasses (more generic).
    * Override this to customize processing behavior for specific events.
@@ -61,7 +60,7 @@ export class EventSource<T extends AbstractEvent> {
    * Register an {@link EventHandler}
    * @param handler
    * @param priority handlers are called by ascending priority (e.g. priority 0 is called before 1)
-   * @returns a function that calls {@link #unhandle} for you.
+   * @returns a function that calls {@link unhandle} for you.
    * @see EventHandler for more details
    */
   handle(handler: EventHandler<T>, priority = 1000): Cancel {
@@ -78,10 +77,10 @@ export class EventSource<T extends AbstractEvent> {
   }
 
   /**
-   * Call the current handlers according to the {@link #handle priority they were registered with}.
+   * Call the current handlers according to the {@link handle | priority they were registered with}.
    * It's important to realise that even though handlers are free to perform asynchronous actions, they're processed sequentially.
    * If a handler returns a promise, further processing waits until it settles.
-   * Handlers can {@link AbstractEvent#handled stop} further processing.
+   * Handlers can {@link AbstractEvent.handled | stop} further processing.
    * @returns a promise that settles when processing is done
    */
   async submit(event: T): Promise<void> {
@@ -106,7 +105,7 @@ export class EventBus {
   private sourceMap = new Map<Constructor<any>, EventSource<any>>();
 
   /**
-   * Like {@link EventSource#handle}, but for a specific event type.
+   * Like {@link EventSource.handle}, but for a specific event type.
    * e.g.: `eventBus.handle(AssetEvent, e => use(e.asset));`
    * You're free to create a hierarchy of event classes and handle any subclass of {@link AbstractEvent}
    * (including AbstractEvent itself, although it's usually only advisable for very general purposes, like debugging or logging).
@@ -118,7 +117,7 @@ export class EventBus {
   }
 
   /**
-   * Like {@link EventSource#unhandle}, but for a specific event type.
+   * Like {@link EventSource.unhandle}, but for a specific event type.
    */
   unhandle<T extends AbstractEvent>(type: Constructor<T>, handler: EventHandler<T>): void {
     const source = this.sourceMap.get(type);
@@ -127,7 +126,7 @@ export class EventBus {
   }
 
   /**
-   * Like {@link EventSource#submit}, but sequentially processes all event sources for the types and in the order returned by {@link AbstractEvent#getTypeChain}.
+   * Like {@link EventSource.submit}, but sequentially processes all event sources for the types and in the order returned by {@link AbstractEvent.getTypeChain}.
    * @returns a promise that settles when all processing is done
    */
   async submit(event: AbstractEvent): Promise<void> {

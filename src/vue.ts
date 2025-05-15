@@ -3,11 +3,7 @@ import { isResource, Resource } from './general';
 import { Interval } from './timing';
 
 /**
- * @file Utilities for working with Vue
- */
-
-/**
- * Convenience function to define a {@link ref} to a DOM element.
+ * Convenience function to define a [ref](https://vuejs.org/api/reactivity-core.html#ref) to a DOM element.
  * If the ref targets a component, its root element will be used.
  */
 export function elementRef<T extends Element>(): Ref<UnwrapRef<T | undefined>> {
@@ -27,18 +23,20 @@ export function elementRef<T extends Element>(): Ref<UnwrapRef<T | undefined>> {
 }
 
 /**
- * Manages a {@link #time reactive time value in seconds}.
+ * Manages a {@link time | reactive time value in seconds}.
  * Not recommended for use cases requiring high precision, custom timing logic is likely more suitable for that!
  */
 export class ReactiveTimer implements Resource {
   /**
-   * {@link ref} with the number of elapsed integer seconds.
-   * Can be freely updated to any desired integer value while running or paused, either directly or through {@link #reset}.
+   * `Ref` with the number of elapsed integer seconds.
+   * Can be freely updated to any desired integer value while running or paused, either directly or through {@link reset}.
    *
    * The fractional time (i.e. sub-second elapsed time) is not visible but maintained internally.
    * It's important to note that this is retained during a pause.
    * (e.g. if stopped at 3.5 seconds, the timer will reach 4 seconds only half a second after being resumed).
    * One exception is when the user updates the ref value while paused, the fraction is reset to 0.
+   *
+   * @see https://vuejs.org/api/reactivity-core.html#ref
    */
   readonly time: Ref<number>;
 
@@ -102,8 +100,9 @@ export class ReactiveTimer implements Resource {
 }
 
 /**
- * Convenience function that runs the given cleanup tasks {@link onBeforeUnmount}.
+ * Convenience function that runs the given cleanup tasks on component unmount.
  * A task can either be an ordinary function or a {@link Resource} that needs to be freed.
+ * @see https://vuejs.org/api/composition-api-lifecycle.html#onbeforeunmount
  */
 export function cleanup(...tasks: Array<() => any | Resource>): void {
   onBeforeUnmount(() => tasks.forEach(t => isResource(t) ? t.free() : t()));

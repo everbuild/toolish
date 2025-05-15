@@ -1,6 +1,3 @@
-/**
- * @file Utilities for working with strings
- */
 
 export function toKebabCase(source: string): string {
   return source.trim()

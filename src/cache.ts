@@ -1,6 +1,3 @@
-/**
- * @file Basic TTL caching
- */
 
 export interface CacheLoader<T, P extends Array<any>> {
   (...params: P): T | Promise<T>;
@@ -9,20 +6,20 @@ export interface CacheLoader<T, P extends Array<any>> {
 export interface TtlCacheOptions<P extends Array<any>> {
   /**
    * Time to live of any cache entry, in milliseconds (i.e. how long data is cached).
-   * Set to {@link Number#POSITIVE_INFINITY} to never expire.
+   * Set to [infinity](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/POSITIVE_INFINITY) to never expire.
    * Default: 1 hour.
    */
   ttl: number;
 
   /**
    * Function used to generate a unique cache key for a given list of loader parameters.
-   * Default: {@link JSON#stringify}
+   * Default: [JSON.stringify](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify)
    * @param params
    */
   getKey: (params: P) => string;
 }
 
-class TtlCacheEntry<T> {
+export class TtlCacheEntry<T> {
   constructor(
     public expireTime: number,
     public value: T,
@@ -54,9 +51,9 @@ export class TtlCache<T, P extends Array<any>> {
   protected options: TtlCacheOptions<P>;
 
   /**
-   * @param load function that loads the underlying values. It gets passed the same parameters as {@link #get}.
+   * @param load function that loads the underlying values. It gets passed the same parameters as {@link get}.
    *             The load function may be synchronous or asynchronous (i.e. returning a promise).
-   * @param options optional, see {@link TtlCache#OPTIONS}
+   * @param options optional, see {@link TtlCache.OPTIONS}
    */
   constructor(
     private load: CacheLoader<T, P>,
@@ -109,7 +106,7 @@ export class ArrayTtlCache<T, P extends Array<any>> extends TtlCache<Array<T>, P
   }
 
   /**
-   * Like {@link TtlCache#getCached} but returns an empty array if no values are currently associated with the given parameters.
+   * Like {@link TtlCache.getCached} but returns an empty array if no values are currently associated with the given parameters.
    */
   getCached(...params: P): Array<T> {
     return super.getCached(...params) ?? [];

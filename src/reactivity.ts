@@ -2,10 +2,6 @@ import { areEqual, Cancel, Cloneable, passThrough, Resource } from './general';
 import { isObject, mapProperties } from './object';
 import { Consumer, Transformation } from './types';
 
-/**
- * @file Simple, explicit, push-based reactivity system.
- */
-
 export type MaybeReactive<T> = T | Reactive<T>;
 
 export type ReactiveNested<T> = T extends Array<infer E> ? ReactiveArray<ReactiveNested<E>> : T extends object ? ReactiveObject<{ [K in keyof T]: ReactiveNested<T[K]> }> : ReactiveValue<T>;
@@ -24,7 +20,10 @@ export interface PropertyRemover<T> {
   (value: T, key: keyof T): void;
 }
 
-interface Publisher {
+/**
+ * Notifies its subscribers when data gets updated
+ */
+export interface Publisher {
   subscribe(subscriber: Subscriber): void;
 
   unsubscribe(subscriber: Subscriber): void;
@@ -34,11 +33,17 @@ interface Publisher {
   hasSubscribers(): boolean;
 }
 
-interface Subscriber {
+/**
+ * Receives notifications when data gets updated
+ */
+export interface Subscriber {
   update(): void;
 }
 
-interface SubscriptionTracker {
+/**
+ * Can subscribe to a given publisher to receive notifications when data gets updated
+ */
+export interface SubscriptionTracker {
   subscribeTo(publisher: Publisher): void;
 }
 
@@ -49,7 +54,7 @@ export interface ReactiveCache {
 }
 
 /**
- * {@link ReactiveCache} implementation that only caches objects using a {@link WeakMap}.
+ * {@link ReactiveCache} implementation that only caches objects using a [WeakMap](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakMap).
  * Requests to store other types of values are ignored.
  */
 export class WeakReactiveCache implements ReactiveCache {
@@ -125,7 +130,7 @@ export abstract class Reactive<T> implements Publisher {
   }
 
   /**
-   * Like {@link #of}, but if the given value is an array or object, its elements or properties are also converted.
+   * Like {@link of}, but if the given value is an array or object, its elements or properties are also converted.
    * If these are themselves arrays or objects, the same logic is applied, and so on until the entire graph is reactive.
    */
   static nest<T>(source: T, cache: ReactiveCache | false = Reactive.NESTED_CACHE): T extends Reactive<any> ? T : ReactiveNested<T> {
@@ -156,7 +161,7 @@ export abstract class Reactive<T> implements Publisher {
   }
 
   /**
-   * {@link #unwrap Unwraps} the given value if it is reactive.
+   * {@link unwrap | Unwraps} the given value if it is reactive.
    * If the resulting value is also reactive it is also unwrapped, and so on.
    * Optionally pass in a {@link SubscriptionTracker} to track reactivity.
    * WARNING: bypasses reactivity if no tracker is provided!
@@ -171,7 +176,7 @@ export abstract class Reactive<T> implements Publisher {
   }
 
   /**
-   * {@link #unwrap Unwraps} the given value if it is reactive and any nested properties or elements in case of an object or array respectively.
+   * {@link unwrap | Unwraps} the given value if it is reactive and any nested properties or elements in case of an object or array respectively.
    * WARNING: bypasses reactivity!
    */
   static unwrapNested<T>(value: T): UnreactiveNested<T>;
@@ -184,7 +189,7 @@ export abstract class Reactive<T> implements Publisher {
 
   /**
    * Convenience function that allows passing a value that is optionally reactive.
-   * Calls {@link #map} if the value is reactive, otherwise applies the transformation directly.
+   * Calls {@link map} if the value is reactive, otherwise applies the transformation directly.
    */
   static map<T, R>(value: MaybeReactive<T>, transform: Transformation<T, R>): MaybeReactive<R> {
     if (value instanceof Reactive) return value.map(transform) as any;
@@ -198,7 +203,7 @@ export abstract class Reactive<T> implements Publisher {
   static combine<T>(values: Array<MaybeReactive<T>>): MaybeReactive<Array<T>>;
 
   /**
-   * Like {@link #combine} with a single argument, but allows passing a function that transforms the array of unwrapped values into something else.
+   * Like {@link combine} with a single argument, but allows passing a function that transforms the array of unwrapped values into something else.
    * Effectively a shorthand for `Reactive.map(Reactive.combine(values), transform)`.
    * NOTE if none of the given values is reactive, transform is applied to the original array.
    */
@@ -217,7 +222,7 @@ export abstract class Reactive<T> implements Publisher {
 
   /**
    * Convenience function that allows passing a value that is optionally reactive.
-   * Calls {@link #consume} if the value is reactive, otherwise calls the consumer directly.
+   * Calls {@link consume} if the value is reactive, otherwise calls the consumer directly.
    */
   static consume<T>(value: MaybeReactive<T>, consumer: Consumer<T>): Cancel | undefined {
     if (value instanceof Reactive) return value.consume(consumer);
@@ -225,20 +230,20 @@ export abstract class Reactive<T> implements Publisher {
   }
 
   /**
-   * Convenience function that {@link #unwrap unwraps} the underlying value and creates a subscription using the given tracker.
-   * Mostly useful in a {@link #ReactiveDerivation}.
+   * Convenience function that {@link unwrap | unwraps} the underlying value and creates a subscription using the given tracker.
+   * Mostly useful in a {@link ReactiveDerivation}.
    * @param tracker
    */
   get(tracker: SubscriptionTracker): T;
 
   /**
-   * Convenience alias for {@link #consume}.
+   * Convenience alias for {@link consume}.
    * @param consumer
    */
   get(consumer: Consumer<T>): Cancel;
 
   /**
-   * Convenience alias for {@link #select}.
+   * Convenience alias for {@link select}.
    */
   get<K extends keyof T>(key: K): ReactiveDerivation<UnreactiveDeep<Selection<T, K>>>;
 
@@ -266,12 +271,12 @@ export abstract class Reactive<T> implements Publisher {
 
   /**
    * Returns the current underlying value.
-   * WARNING: bypasses reactivity, you usually want to use {@link #get} instead!
+   * WARNING: bypasses reactivity, you usually want to use {@link get} instead!
    */
   abstract unwrap(): T;
 
   /**
-   * Calls {@link Reactive#unwrapNested} with this value.
+   * Calls {@link Reactive.unwrapNested} with this value.
    */
   unwrapNested(): UnreactiveNested<T> {
     return Reactive.unwrapNested(this as Reactive<T>);
@@ -279,8 +284,8 @@ export abstract class Reactive<T> implements Publisher {
 
   /**
    * Creates a {@link ReactiveDerivation} that transforms the underlying value to something else.
-   * This only allows using the current ReactiveValue as a source, if you need multiple reactive sources use {@link #derive} instead.
-   * If the transform function returns a reactive value it's unwrapped automatically similar to {@link #flatten}.
+   * This only allows using the current ReactiveValue as a source, if you need multiple reactive sources use {@link derive} instead.
+   * If the transform function returns a reactive value it's unwrapped automatically similar to {@link flatten}.
    * @param transform function that receives the underlying value and produces a new one.
    */
   map<R>(transform: Transformation<T, R>): ReactiveDerivation<UnreactiveDeep<R>> {
@@ -293,7 +298,7 @@ export abstract class Reactive<T> implements Publisher {
    * A negative index can be used to count back from the end (e.g. -1 = last element).
    * An index or property name that is otherwise invalid (out of range) yields undefined.
    * When the underlying value is neither an object nor an array, the resulting ReactiveDerivation also yields undefined.
-   * If the selected value is reactive it's unwrapped automatically similar to {@link #flatten}.
+   * If the selected value is reactive it's unwrapped automatically similar to {@link flatten}.
    * Note that (although not recommended) it is possible for the underlying value type to change between object, array or anything else,
    * the resulting ReactiveDerivation will react accordingly.
    * @param key property name or index
@@ -364,7 +369,7 @@ export class ReactiveValue<T> extends Reactive<T> implements Cloneable<ReactiveV
 
   /**
    * Replaces the entire underlying value.
-   * This is mostly appropriate for primitive types, see {@link #patch} for a more efficient way of updating arrays and objects.
+   * This is mostly appropriate for primitive types, see {@link patch} for a more efficient way of updating arrays and objects.
    * NOTE that this has no effect if the underlying value is already strictly equal to the given value.
    */
   set(value: T): void {
@@ -375,11 +380,11 @@ export class ReactiveValue<T> extends Reactive<T> implements Cloneable<ReactiveV
 
   /**
    * Attempts to perform a partial update of the underlying value based on the differences with the given value.
-   * This base implementation just calls {@link #set} but is overridden in subclasses to provide more specialized implementations.
+   * This base implementation just calls {@link set} but is overridden in subclasses to provide more specialized implementations.
    * Generally, they apply the patch logic recursively to any nested values in the entire graph.
    * The main advantages of patch are that update handling is restricted to where it's really needed and reduced memory overhead.
    * @param source unreactive source value to use
-   * @param cache cache to use when {@link Reactive#nest resolving nested values}
+   * @param cache cache to use when {@link Reactive.nest resolving nested values}
    * @see ReactiveObject#patch
    * @see ReactiveArray#patch
    */
@@ -553,7 +558,7 @@ export class ReactiveArray<T extends ReactiveValue<any>> extends ReactiveComplex
  * Produces a new reactive value based on other reactive values using a given {@link Derivation} function.
  * The function is called with a {@link SubscriptionTracker} that should be used to track the reactive values you depend on,
  * which ensures that it gets reevaluated whenever one of those dependencies change.
- * If you pass the tracker to {@link Reactive#get} this is done for you, so this is usually the most convenient way to go.
+ * If you pass the tracker to {@link Reactive.get} this is done for you, so this is usually the most convenient way to go.
  * Note that the function is only evaluated when needed (on the first unwrap since its creation or since a dependency changed), effectively caching the result.
  */
 export class ReactiveDerivation<T> extends Reactive<T> implements Subscriber, SubscriptionTracker, Resource {

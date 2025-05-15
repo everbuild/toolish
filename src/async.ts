@@ -1,21 +1,17 @@
 import { isObject } from './object';
 
 /**
- * @file Utilities that help write asynchronous code
- */
-
-/**
- * The missing {@link Promise} executor type.
+ * The missing Promise executor type.
  */
 export type PromiseExecutor<T> = ConstructorParameters<typeof Promise<T>>[0];
 
 /**
- * The missing {@link Promise} resolve function type.
+ * The missing Promise resolve function type.
  */
 export type ResolvePromise<T> = Parameters<PromiseExecutor<T>>[0];
 
 /**
- * The missing {@link Promise} reject function type.
+ * The missing Promise reject function type.
  */
 export type RejectPromise = Parameters<PromiseExecutor<never>>[1];
 
@@ -28,7 +24,8 @@ export function isPromiseLike<T = unknown>(value: MaybePromiseLike<T>): value is
 }
 
 /**
- * {@link Promise} wrapper that allows resolve and reject to be called externally
+ * Promise wrapper that allows resolve and reject to be called externally
+ * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise
  */
 export class Deferred<T> {
   promise: Promise<T>;

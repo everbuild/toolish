@@ -3,16 +3,12 @@ import { CancelError, ignore } from './general';
 import { Consumer, GenericFunction, Producer } from './types';
 
 /**
- * @file Timing utilities
- */
-
-/**
- * The missing {@link setTimeout timeout} reference type.
+ * The missing `setTimeout` return type.
  */
 export type TimeoutHandle = ReturnType<typeof setTimeout>;
 
 /**
- * The missing {@link setInterval interval} reference type.
+ * The missing `setInterval` return type.
  */
 export type IntervalHandle = ReturnType<typeof setInterval>;
 
@@ -26,12 +22,12 @@ export function delay(ms: number): Promise<void> {
 
 /**
  * Wraps a promise that resolves after the given milliseconds.
- * Uses {@link setTimeout}, so the same {@link https://developer.mozilla.org/en-US/docs/Web/API/Window/setTimeout#reasons_for_delays_longer_than_specified delay inaccuracies} apply.
+ * Uses `setTimeout`, so the same [delay inaccuracies](https://developer.mozilla.org/en-US/docs/Web/API/Window/setTimeout#reasons_for_delays_longer_than_specified) apply.
  */
 export class Delay extends Deferred<void> {
   private handle?: TimeoutHandle;
 
-  constructor(private ms: number) {
+  constructor(ms: number) {
     super();
     this.handle = setTimeout(this.resolve, ms);
   }
@@ -71,7 +67,9 @@ export class Delay extends Deferred<void> {
 }
 
 /**
- * Convenience wrapper for {@link setInterval}.
+ * Convenience wrapper for `setInterval`.
+ * @see https://developer.mozilla.org/en-US/docs/Web/API/Window/setInterval
+ * Uses `setInterval`, so the same [delay restrictions](https://developer.mozilla.org/en-US/docs/Web/API/Window/setInterval#delay_restrictions) apply.
  */
 export class Interval {
   private handle: IntervalHandle;
@@ -80,7 +78,6 @@ export class Interval {
   /**
    * Runs action every ms milliseconds.
    * CAUTION: If the given action callback throws an error, the interval is cancelled to avoid excessive error logging.
-   * Uses {@link setInterval}, so the same {@link https://developer.mozilla.org/en-US/docs/Web/API/Window/setInterval#delay_restrictions delay restrictions} apply.
    * @param ms      target delay
    * @param action  called after each delay
    */

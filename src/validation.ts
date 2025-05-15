@@ -5,10 +5,6 @@ import { isBlank, isNotBlank } from './string';
 import { isPresent, Transformation } from './types';
 
 /**
- * @file Simple validation solution with support for async validators and parameterized error messages.
- */
-
-/**
  * Allows a {@link Validator} to return parameters that can be used when displaying error messages.
  */
 export type ValidationParameters = Record<string, any>;
@@ -27,7 +23,7 @@ export type ValidationResult = boolean | ValidationParameters;
  * IMPORTANT: validators should only check one thing and be tolerant of issues outside their scope.
  * For example, consider validating an e-mail field with the rule `{ email }`.
  * You don't want to show an error when the field is not filled in.
- * Even if the field is mandatory, you want to show {@link required a different error for that}.
+ * Even if the field is mandatory, you want to show {@link required | a different error for that}.
  * For this reason, the {@link email} validator for example also considers all non-string and empty values as valid.
  */
 export type Validator = Transformation<unknown, MaybePromiseLike<ValidationResult>>;

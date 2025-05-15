@@ -2,10 +2,6 @@ import { equals, isNumeric, passThrough } from './general';
 import { isObject } from './object';
 import { DualPredicate, isPresent, Predicate, Producer, Transformation } from './types';
 
-/**
- * @file Utilities for working with arrays
- */
-
 export type ArrayElement<T> = T extends Array<infer E> ? E : never;
 
 export type MaybeArray<T> = T | Array<T>;
@@ -178,14 +174,15 @@ export function sort<T>(array: Array<T>, order?: number): Array<T> {
 
 /**
  * Sorts an array in place by a specific key.
- * If you need to preserve the original array, make a copy first with e.g. {@link Array#slice}.
+ * If you need to preserve the original array, make a copy first with e.g. [slice](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/slice).
  * Values of differing types are sorted in groups according to below order:
  * nullish, booleans, numbers (including numeric strings), strings (case-insensitive), symbols, objects (by their JSON representation), everything else.
- * NOTE this is unlike default {@link Array#sort} behaviour, which sorts by string representation and moves all undefined elements to the end.
+ * NOTE this is unlike default `Array.sort` behaviour, which sorts by string representation and moves all undefined elements to the end.
  * @param array
  * @param key name of an element property
  * @param order any positive number for ascending (default); negative for descending (0 retains original order, i.e. the sort has no effect)
  * @returns the given array
+ * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/sort
  */
 export function sortBy<T>(array: Array<T>, key: keyof T, order ?: number): Array<T>;
 

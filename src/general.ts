@@ -3,10 +3,6 @@ import { isBlank } from './string';
 import { Predicate } from './types';
 
 /**
- * @file General utilities
- */
-
-/**
  * Semantic interface for a function that cancels an action.
  * E.g.: a function like `subscribe(handler)` could return a `Cancel` function that unsubscribes given handler again.
  */
@@ -16,7 +12,7 @@ export interface Cancel {
 
 /**
  * Denotes a class that uses one or more limited resources (e.g. memory, network connections,...).
- * It's generally advisable to call {@link #free} as soon as it's no longer needed.
+ * It's generally advisable to call {@link free} as soon as it's no longer needed.
  * It's assumed that it's disposable, i.e. should no longer be used once freed.
  * Correct implementation is the responsibility of the user, no attempt is usually made to enforce this.
  * @see ReusableResource for an interface that is intended for reuse.
@@ -27,7 +23,7 @@ export interface Resource {
 
 /**
  * Marks a resource that can be safely used after it has been freed, and as such can be freed multiple times during its lifetime.
- * This generally implies that a call to {@link Resource#free} releases any currently used resources, while continued use may allocate new ones.
+ * This generally implies that a call to {@link Resource.free} releases any currently used resources, while continued use may allocate new ones.
  */
 export interface ReusableResource extends Resource {
 }
@@ -70,7 +66,7 @@ export function passThrough<T>(value: T): T {
 }
 
 /**
- * Creates a {@Predicate} that returns true for the given value.
+ * Creates a {@link Predicate} that returns true for the given value.
  */
 export function equals<T>(value: T): Predicate<T> {
   return v => v === value;
