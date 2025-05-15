@@ -1,0 +1,106 @@
+{
+  "name": "toolish",
+  "version": "0.1.0",
+  "description": "A modest collection of JS/TS utilities",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "update-exports": "node ./update-exports.js",
+    "prebuild": "rm -rf ./dist",
+    "build": "rollup --config",
+    "test": "jest",
+    "preversion": "npm run test && npm run build",
+    "prepublishOnly": "git push && git push --tags"
+  },
+  "keywords": [
+    "toolish",
+    "util",
+    "utilities",
+    "reactivity",
+    "events",
+    "event bus",
+    "validation",
+    "vue"
+  ],
+  "author": "Evert Bauwens (https://github.com/everbuild)",
+  "license": "MIT",
+  "repository": "everbuild/toolish",
+  "bugs": "https://github.com/everbuild/toolish/issues",
+  "devDependencies": {
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^11.1.6",
+    "@types/jest": "^29.5.12",
+    "jest": "^29.7.0",
+    "rollup": "^4.21.2",
+    "ts-jest": "^29.2.4",
+    "tslib": "^2.7.0",
+    "typescript": "^5.5.4",
+    "vue": "3.5.13"
+  },
+  "peerDependencies": {
+    "vue": "3.5.13"
+  },
+  "peerDependenciesMeta": {
+    "vue": {
+      "optional": true
+    }
+  },
+  "exports": {
+    "./array": {
+      "import": "./dist/array.js",
+      "types": "./dist/dts/array.d.ts"
+    },
+    "./async": {
+      "import": "./dist/async.js",
+      "types": "./dist/dts/async.d.ts"
+    },
+    "./cache": {
+      "import": "./dist/cache.js",
+      "types": "./dist/dts/cache.d.ts"
+    },
+    "./event": {
+      "import": "./dist/event.js",
+      "types": "./dist/dts/event.d.ts"
+    },
+    "./general": {
+      "import": "./dist/general.js",
+      "types": "./dist/dts/general.d.ts"
+    },
+    "./map": {
+      "import": "./dist/map.js",
+      "types": "./dist/dts/map.d.ts"
+    },
+    "./object": {
+      "import": "./dist/object.js",
+      "types": "./dist/dts/object.d.ts"
+    },
+    "./reactivity": {
+      "import": "./dist/reactivity.js",
+      "types": "./dist/dts/reactivity.d.ts"
+    },
+    "./string": {
+      "import": "./dist/string.js",
+      "types": "./dist/dts/string.d.ts"
+    },
+    "./timing": {
+      "import": "./dist/timing.js",
+      "types": "./dist/dts/timing.d.ts"
+    },
+    "./types": {
+      "import": "./dist/types.js",
+      "types": "./dist/dts/types.d.ts"
+    },
+    "./validation": {
+      "import": "./dist/validation.js",
+      "types": "./dist/dts/validation.d.ts"
+    },
+    "./vue": {
+      "import": "./dist/vue.js",
+      "types": "./dist/dts/vue.d.ts"
+    }
+  }
+}
