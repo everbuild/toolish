@@ -2,6 +2,5 @@ dist/
 coverage/
 node_modules/
 .idea/
-docs/
 npm-debug.log
 npm-debug.log.*
