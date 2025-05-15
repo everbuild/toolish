@@ -174,10 +174,14 @@ export function sort<T>(array: Array<T>, order?: number): Array<T> {
 
 /**
  * Sorts an array in place by a specific key.
+ *
  * If you need to preserve the original array, make a copy first with e.g. [slice](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/slice).
- * Values of differing types are sorted in groups according to below order:
+ *
+ * Values of differing types are sorted in groups in this order:
  * nullish, booleans, numbers (including numeric strings), strings (case-insensitive), symbols, objects (by their JSON representation), everything else.
+ *
  * NOTE this is unlike default `Array.sort` behaviour, which sorts by string representation and moves all undefined elements to the end.
+ *
  * @param array
  * @param key name of an element property
  * @param order any positive number for ascending (default); negative for descending (0 retains original order, i.e. the sort has no effect)
