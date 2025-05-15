@@ -15,7 +15,8 @@
     "test": "jest",
     "docs": "typedoc",
     "commit-docs": "git add ./docs && git commit -m 'updated docs' -- ./docs",
-    "preversion": "npm run test && npm run build && npm run update-exports && npm run docs && npm run commit-docs",
+    "preversion": "npm run test && npm run build && npm run update-exports",
+    "postversion": "npm run docs && npm run commit-docs",
     "prepublishOnly": "git push && git push --tags"
   },
   "keywords": [
