@@ -1,4 +1,4 @@
-import { removeBy, sortBy } from './array';
+import { removeElementBy, sortArrayBy } from './array';
 import { MaybePromiseLike } from './async';
 import { Cancel } from './general';
 import { getOrCreateEntry } from './map';
@@ -67,7 +67,7 @@ export class EventSource<T extends AbstractEvent> {
    */
   handle(handler: EventHandler<T>, priority = 1000): Cancel {
     this.handlers.push({ handler, priority });
-    sortBy(this.handlers, 'priority');
+    sortArrayBy(this.handlers, 'priority');
     return () => this.unhandle(handler);
   }
 
@@ -75,7 +75,7 @@ export class EventSource<T extends AbstractEvent> {
    * Unregister given {@link EventHandler}
    */
   unhandle(handler: EventHandler<T>): void {
-    removeBy(this.handlers, w => w.handler === handler);
+    removeElementBy(this.handlers, w => w.handler === handler);
   }
 
   /**

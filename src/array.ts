@@ -20,15 +20,15 @@ const UNDEFINED_PLACEHOLDER = Symbol() as any;
  * For your convenience the given value is also passed to the predicate as a second parameter,
  * so you can easily compare the two if needed.
  */
-export function findByOrAdd<T>(array: Array<T>, value: T, predicate: DualPredicate<T>): T {
-  return findByOrCreate(array, () => value, v => predicate(v, value));
+export function findOrAddElementBy<T>(array: Array<T>, value: T, predicate: DualPredicate<T>): T {
+  return findOrCreateElementBy(array, () => value, v => predicate(v, value));
 }
 
 /**
  * If the given array contains an element matching the given predicate, returns its value,
  * otherwise adds the result of calling the given factory function to the end, and returns that.
  */
-export function findByOrCreate<T>(array: Array<T>, factory: Producer<T>, predicate: Predicate<T>): T {
+export function findOrCreateElementBy<T>(array: Array<T>, factory: Producer<T>, predicate: Predicate<T>): T {
   let result = array.find(predicate);
   if (result === undefined) array.push(result = factory());
   return result;
@@ -38,7 +38,7 @@ export function findByOrCreate<T>(array: Array<T>, factory: Producer<T>, predica
  * Replaces the first array element matching the given value with the given replacement.
  * @returns the original element if replaced, undefined otherwise
  */
-export function swap<T>(array: Array<T>, value: T, replacement: T): T | undefined {
+export function swapElement<T>(array: Array<T>, value: T, replacement: T): T | undefined {
   const i = array.indexOf(value);
   if (i >= 0) {
     const result = array[i];
@@ -51,8 +51,8 @@ export function swap<T>(array: Array<T>, value: T, replacement: T): T | undefine
  * Replaces all array elements matching the given value with the given replacement.
  * @returns the original replaced elements
  */
-export function swapAll<T>(array: Array<T>, value: T, replacement: T): Array<T> {
-  return swapAllBy(array, replacement, equals(value));
+export function swapAllElements<T>(array: Array<T>, value: T, replacement: T): Array<T> {
+  return swapAllElementsBy(array, replacement, equals(value));
 }
 
 /**
@@ -61,7 +61,7 @@ export function swapAll<T>(array: Array<T>, value: T, replacement: T): Array<T> 
  * so you can easily compare the two if needed.
  * @returns the original element if replaced, undefined otherwise
  */
-export function swapBy<T>(array: Array<T>, replacement: T, predicate: DualPredicate<T>): T | undefined {
+export function swapElementBy<T>(array: Array<T>, replacement: T, predicate: DualPredicate<T>): T | undefined {
   const i = array.findIndex(v => predicate(v, replacement));
   if (i >= 0) {
     const result = array[i];
@@ -76,7 +76,7 @@ export function swapBy<T>(array: Array<T>, replacement: T, predicate: DualPredic
  * so you can easily compare the two if needed.
  * @returns the original replaced elements
  */
-export function swapAllBy<T>(array: Array<T>, replacement: T, predicate: DualPredicate<T>): Array<T> {
+export function swapAllElementsBy<T>(array: Array<T>, replacement: T, predicate: DualPredicate<T>): Array<T> {
   return array.filter((v, i) => {
     const match = predicate(v, replacement);
     if (match) array[i] = replacement;
@@ -90,8 +90,8 @@ export function swapAllBy<T>(array: Array<T>, replacement: T, predicate: DualPre
  * so you can easily compare the two if needed.
  * @returns the original element if replaced, undefined if added
  */
-export function swapByOrAdd<T>(array: Array<T>, replacement: T, predicate: DualPredicate<T>): T | undefined {
-  const result = swapBy(array, replacement, predicate);
+export function swapOrAddElementBy<T>(array: Array<T>, replacement: T, predicate: DualPredicate<T>): T | undefined {
+  const result = swapElementBy(array, replacement, predicate);
   if (result === undefined) array.push(replacement);
   return result;
 }
@@ -101,7 +101,7 @@ export function swapByOrAdd<T>(array: Array<T>, replacement: T, predicate: DualP
  * If the array doesn't contain the element it's left as is.
  * @returns the original element if removed, undefined otherwise
  */
-export function remove<T>(array: Array<T>, element: T): T | undefined {
+export function removeElement<T>(array: Array<T>, element: T): T | undefined {
   const i = array.indexOf(element);
   if (i >= 0) return array.splice(i, 1)[0];
 }
@@ -110,15 +110,15 @@ export function remove<T>(array: Array<T>, element: T): T | undefined {
  * Removes all matching element from the given array.
  * @returns the removed elements
  */
-export function removeAll<T>(array: Array<T>, element: T): Array<T> {
-  return removeAllBy(array, equals(element));
+export function removeAllElements<T>(array: Array<T>, element: T): Array<T> {
+  return removeAllElementsBy(array, equals(element));
 }
 
 /**
  * Removes the first array element matching the predicate.
  * @returns the original element if removed, undefined otherwise
  */
-export function removeBy<T>(array: Array<T>, predicate: Predicate<T>): T | undefined {
+export function removeElementBy<T>(array: Array<T>, predicate: Predicate<T>): T | undefined {
   const index = array.findIndex(predicate);
   if (index >= 0) return array.splice(index, 1)[0];
 }
@@ -127,7 +127,7 @@ export function removeBy<T>(array: Array<T>, predicate: Predicate<T>): T | undef
  * Removes all array elements matching the predicate.
  * @returns the removed elements
  */
-export function removeAllBy<T>(array: Array<T>, predicate: Predicate<T>): Array<T> {
+export function removeAllElementsBy<T>(array: Array<T>, predicate: Predicate<T>): Array<T> {
   return array.filter((v, i) => {
     const match = predicate(v);
     if (match) array.splice(i, 1);
@@ -138,17 +138,17 @@ export function removeAllBy<T>(array: Array<T>, predicate: Predicate<T>): Array<
 /**
  * Returns a new array with all duplicate elements removed
  */
-export function filterDuplicates<T>(array: Array<T>): Array<T> {
+export function filterDuplicateElements<T>(array: Array<T>): Array<T> {
   return [...new Set(array)];
 }
 
 /**
  * Removes the first matching element from the given array or adds it if the array doesn't contain the element yet.
  * @returns the original element if removed, undefined if added
- * @see {@link filterDuplicates} to make sure an array contains unique values
+ * @see {@link filterDuplicateElements} to make sure an array contains unique values
  */
-export function toggle<T>(array: Array<T>, element: T): T | undefined {
-  const result = remove(array, element);
+export function toggleElement<T>(array: Array<T>, element: T): T | undefined {
+  const result = removeElement(array, element);
   if (result === undefined) array.push(element);
   return result;
 }
@@ -159,21 +159,23 @@ export function toggle<T>(array: Array<T>, element: T): T | undefined {
  * so you can easily compare the two if needed.
  * @returns the original element if removed, undefined if added
  */
-export function toggleBy<T>(array: Array<T>, element: T, predicate: DualPredicate<T>): T | undefined {
-  const result = removeBy(array, v => predicate(v, element));
+export function toggleElementBy<T>(array: Array<T>, element: T, predicate: DualPredicate<T>): T | undefined {
+  const result = removeElementBy(array, v => predicate(v, element));
   if (result === undefined) array.push(element);
   return result;
 }
 
 /**
- * Like {@link sortBy}, but sorts directly by the element values.
+ * Like {@link sortArrayBy}, but sorts directly by the element values.
  */
-export function sort<T>(array: Array<T>, order?: number): Array<T> {
-  return sortBy(array, passThrough, order);
+export function sortArray<T>(array: Array<T>, order?: number): Array<T> {
+  return sortArrayBy(array, passThrough, order);
 }
 
 /**
- * Sorts an array in place by a specific key.
+ * Sorts an array in place by one or more specific keys.
+ * If two elements compare equally with a given key, the next one is tried, and so on.
+ * The same order is applied for all keys.
  *
  * If you need to preserve the original array, make a copy first with e.g. [slice](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/slice).
  *
@@ -186,39 +188,37 @@ export function sort<T>(array: Array<T>, order?: number): Array<T> {
  * @param key name of an element property
  * @param order any positive number for ascending (default); negative for descending (0 retains original order, i.e. the sort has no effect)
  * @returns the given array
+ *
  * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/sort
+ *
+ * @label stringKeysSameOrder
  */
-export function sortBy<T>(array: Array<T>, key: keyof T, order ?: number): Array<T>;
+export function sortArrayBy<T>(array: Array<T>, key: MaybeArray<keyof T>, order?: number): Array<T>;
 
 /**
- * Like {@link sortBy} with a single key, but with multiple keys.
- * If two elements compare equally with the first key, the second one is tried, and so on.
- * The same order is applied for all keys.
+ * Like {@link sortArrayBy:stringKeysSameOrder}, but allows passing a specific order for each key.
+ * Ascending order is assumed for any key without corresponding order.
+ *
+ * @label stringKeysSeparateOrders
  */
-export function sortBy<T>(array: Array<T>, keys: Array<keyof T>, order?: number): Array<T>;
+export function sortArrayBy<T>(array: Array<T>, keys: Array<keyof T>, orders: Array<number>): Array<T>;
 
 /**
- * Like {@link sortBy} with multiple keys, but allows passing a specific order for each key.
- * Ascending order is assumed for any keys without corresponding order.
+ * Like {@link sortArrayBy:stringKeysSameOrder}, but allows passing one or more functions that return the sort values of a given element.
+ *
+ * @label functionKeysSameOrder
  */
-export function sortBy<T>(array: Array<T>, keys: Array<keyof T>, orders: Array<number>): Array<T>;
+export function sortArrayBy<T>(array: Array<T>, key: MaybeArray<SortKeyProducer<T>>, order?: number): Array<T>;
 
 /**
- * Like {@link sortBy} with a single key, but allows passing a function that returns the sort value of a given element.
+ * Like {@link sortArrayBy:functionKeysSameOrder}, but allows passing a specific order for each key.
+ * Ascending order is assumed for any key without corresponding order.
+ *
+ * @label functionKeysSeparateOrders
  */
-export function sortBy<T>(array: Array<T>, key: SortKeyProducer<T>, order?: number): Array<T>;
+export function sortArrayBy<T>(array: Array<T>, keys: Array<SortKeyProducer<T>>, orders: Array<number>): Array<T>;
 
-/**
- * Like {@link sortBy} with multiple keys, but allows passing functions that return the sort values of a given element.
- */
-export function sortBy<T>(array: Array<T>, keys: Array<SortKeyProducer<T>>, order?: number): Array<T>;
-
-/**
- * Like {@link sortBy} with multiple keys and orders, but allows passing functions that return the sort values of a given element.
- */
-export function sortBy<T>(array: Array<T>, keys: Array<SortKeyProducer<T>>, orders: Array<number>): Array<T>;
-
-export function sortBy<T>(array: Array<T>, keys: MaybeArray<SortKey<T>>, orders?: MaybeArray<number>): Array<T> {
+export function sortArrayBy<T>(array: Array<T>, keys: MaybeArray<SortKey<T>>, orders?: MaybeArray<number>): Array<T> {
   if (array.length < 2) return array;
   const allKeys = Array.isArray(keys) ? keys : [keys];
 
@@ -232,9 +232,9 @@ export function sortBy<T>(array: Array<T>, keys: MaybeArray<SortKey<T>>, orders?
   if (comparators.length === 0) return array;
   const comparator = mergeComparators(comparators);
 
-  swapAll(array, undefined, UNDEFINED_PLACEHOLDER);
+  swapAllElements(array, undefined, UNDEFINED_PLACEHOLDER);
   array.sort(comparator);
-  swapAll(array, UNDEFINED_PLACEHOLDER, undefined);
+  swapAllElements(array, UNDEFINED_PLACEHOLDER, undefined);
   return array;
 }
 
