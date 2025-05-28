@@ -1,5 +1,5 @@
 import { Deferred, MaybePromiseLike } from './async';
-import { CancelError, ignore } from './general';
+import { CancelError, ignore, Resource, ReusableResource } from './general';
 import { Consumer, GenericFunction, Producer } from './types';
 
 /**
@@ -24,7 +24,7 @@ export function delay(ms: number): Promise<void> {
  * Wraps a promise that resolves after the given milliseconds.
  * Uses `setTimeout`, so the same [delay inaccuracies](https://developer.mozilla.org/en-US/docs/Web/API/Window/setTimeout#reasons_for_delays_longer_than_specified) apply.
  */
-export class Delay extends Deferred<void> {
+export class Delay extends Deferred<void> implements Resource {
   private handle?: TimeoutHandle;
 
   constructor(ms: number) {
@@ -60,6 +60,10 @@ export class Delay extends Deferred<void> {
     }
   }
 
+  free(): void {
+    this.cancel();
+  }
+
   private abort(): void {
     clearTimeout(this.handle);
     this.handle = undefined;
@@ -71,7 +75,7 @@ export class Delay extends Deferred<void> {
  * @see https://developer.mozilla.org/en-US/docs/Web/API/Window/setInterval
  * Uses `setInterval`, so the same [delay restrictions](https://developer.mozilla.org/en-US/docs/Web/API/Window/setInterval#delay_restrictions) apply.
  */
-export class Interval {
+export class Interval implements Resource {
   private handle: IntervalHandle;
   private limit = Number.POSITIVE_INFINITY;
 
@@ -104,12 +108,16 @@ export class Interval {
   cancel(): void {
     clearInterval(this.handle);
   }
+
+  free(): void {
+    this.cancel();
+  }
 }
 
 /**
  * A mechanism that defers function calls until no calls are received during a given interval.
  */
-export class Debounce<T, P extends Array<any>> {
+export class Debounce<T, P extends Array<any>> implements ReusableResource {
   private pending = false;
   private deferred?: Deferred<T>;
   private delay?: Delay;
@@ -154,6 +162,10 @@ export class Debounce<T, P extends Array<any>> {
     this.delay?.cancel(reason);
     this.deferred?.reject(reason);
     this.pending = false;
+  }
+
+  free(): void {
+    this.cancel();
   }
 
   private doRun(): void {
