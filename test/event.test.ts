@@ -1,4 +1,4 @@
-import { sort } from '../src/array';
+import { sortArray } from '../src/array';
 import { AbstractEvent, EventBus } from '../src/event';
 
 class TaskEvent extends AbstractEvent {
@@ -37,7 +37,7 @@ test('EventBus', async () => {
   expect(tasks.size).toBe(0);
 
   // the log is in reverse order due to all events intentionally getting processed sequentially
-  sort(log)
+  sortArray(log)
   expect(log).toEqual([
     '1: eat added',
     '2: cook added',
