@@ -5,20 +5,27 @@ export function isObject(value: unknown): value is object {
 }
 
 /**
+ * Better typed version of {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/keys | Object.entries}
+ */
+export function getPropertyNames<T extends object>(object: T): Array<keyof T> {
+  return Object.keys(object) as Array<keyof T>;
+}
+
+/**
  * Calls the given function for each property of the given object, with the value (first argument!) and key (second argument).
  */
-export function forEachProperty<K extends keyof any, V>(object: Record<K, V>, visit: (v: V, k: K) => void): void {
-  Object.entries(object).forEach(([k, v]) => visit(v as V, k as K));
+export function forEachProperty<T extends object>(object: T, visit: <K extends keyof T> (value: T[K], key: K) => any): void {
+  getPropertyNames(object).forEach(k => visit(object[k], k));
 }
 
 /**
  * Returns a new object with the results of passing the value (first argument!) and key (second argument) of each property to the given function.
  * In other words, the returned object associates the existing keys with new values as returned by the given function.
  */
-export function mapProperties<K extends keyof any, V1, V2 = V1>(source: Record<K, V1>, transform: (v: V1, k: K) => V2): Record<K, V2> {
-  const sourceEntries = Object.entries(source);
-  const targetEntries = sourceEntries.map(([k, v]) => [k, transform(v as V1, k as K)]);
-  return Object.fromEntries(targetEntries);
+export function mapProperties<T extends object, R extends { [P in keyof T]: any }>(object: T, transform: <K extends keyof T> (value: T[K], key: K) => R[K]): R {
+  const result = {} as R;
+  forEachProperty(object, (v, k) => result[k] = transform(v, k));
+  return result;
 }
 
 /**
