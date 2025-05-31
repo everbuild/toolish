@@ -41,7 +41,7 @@ export type ReactiveTransformation<T, R> = GenericFunction<[T, SubscriptionTrack
 
 /**
  * Base class representing a reactive value.
- * As a main API entry-point, it provides a number of static factory functions to convert between normal and appropriate reactive values.
+ * Provides a number of static factory functions to convert between normal and appropriate reactive values.
  *
  * @see {@link ReactiveValue} for a subclass that wraps an actual value
  * @see {@link ReactiveDerivative} for a subclass that produces a new reactive value based on other reactive values

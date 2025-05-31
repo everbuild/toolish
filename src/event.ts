@@ -1,3 +1,13 @@
+/**
+ * Simple event system that allow decoupled communication between modules (a.k.a. observer pattern).
+ *
+ * Similar to DOM events but independent of browser APIs, intended for use cases unrelated to the DOM or even the browser.
+ *
+ * Main APIs: {@link EventSource} and {@link EventBus}
+ *
+ * @module
+ */
+
 import { removeElementBy, sortArrayBy } from './array';
 import { MaybePromiseLike } from './async';
 import { Cancel } from './general';

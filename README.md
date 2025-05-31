@@ -4,11 +4,9 @@
 
 * [General utilities](https://everbuild.github.io/toolish/modules/general.html)
 * [TypeScript utilities](https://everbuild.github.io/toolish/modules/types.html)
-* [Simple, explicit, push-based reactivity system](https://everbuild.github.io/toolish/modules/reactivity.html)
-* [Simple validation solution with support for async validators and parameterized error messages.](https://everbuild.github.io/toolish/functions/validation.validate.html)
-* [Event source](https://everbuild.github.io/toolish/classes/event.EventSource.html) and 
-  [Event bus](https://everbuild.github.io/toolish/classes/event.EventBus.html) -
-  mechanisms that allow decoupled communication between modules (not to be confused with DOM events)
+* [Reactivity system](https://everbuild.github.io/toolish/modules/reactivity.html)
+* [Validation](https://everbuild.github.io/toolish/functions/validation.validate.html)
+* [Event system](https://everbuild.github.io/toolish/modules/event.html)
 * [Async/promise utilities](https://everbuild.github.io/toolish/modules/async.html)
 * [Array utilities](https://everbuild.github.io/toolish/modules/array.html)
 * [Object utilities](https://everbuild.github.io/toolish/modules/object.html)

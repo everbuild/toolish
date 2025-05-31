@@ -1,3 +1,11 @@
+/**
+ * Simple validation solution with support for async validators and parameterized error messages.
+ *
+ * Main API: {@link validate}
+ *
+ * @module
+ */
+
 import { MaybePromiseLike } from './async';
 import { isNumeric } from './general';
 import { isObject } from './object';
@@ -37,7 +45,7 @@ export interface ValidationError {
 }
 
 /**
- * Main validation function that checks whether a given value is valid according to the given rules.
+ * Checks whether a given value is valid according to the given rules.
  * Returns an array of validation errors, which is empty if the value is valid.
  */
 export async function validate(value: unknown, rules: ValidationRules): Promise<Array<ValidationError>> {
