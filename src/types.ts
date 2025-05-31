@@ -4,7 +4,7 @@ export interface GenericFunction<A extends Array<any>, R> {
   (...args: A): R;
 }
 
-export type Constructor<T> = new (...args: Array<any>) => T;
+export type Constructor<T, A extends Array<any> = Array<any>> = new (...args: A) => T;
 
 export type Transformation<T, R> = GenericFunction<[T], R>;
 

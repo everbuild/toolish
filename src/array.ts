@@ -4,6 +4,8 @@ import { DualPredicate, isPresent, Predicate, Producer, Transformation } from '.
 
 export type ArrayElement<T> = T extends Array<infer E> ? E : never;
 
+export type StripArray<T> = T extends Array<infer E> ? E : T;
+
 export type MaybeArray<T> = T | Array<T>;
 
 export type Comparator<T> = Exclude<Parameters<Array<T>['sort']>[0], undefined>;
@@ -13,6 +15,53 @@ export type SortKeyProducer<T> = Transformation<T, any>
 export type SortKey<T> = keyof T | SortKeyProducer<T>
 
 const UNDEFINED_PLACEHOLDER = Symbol() as any;
+
+/**
+ * If the given index is negative, it is assumed to count back from the given limit (e.g. array length), and is translated as such.
+ * E.g. `-1` becomes `limit - 1` and so on.
+ * If the given index is positive, it is returned as is.
+ *
+ * NOTE that no attempt is made to cap the resulting index in any way, it may even be negative again if the given index is larger than the limit.
+ * You can use {@link sanitizeRangeStart} and {@link sanitizeRangeEnd} for that.
+ */
+export function mirrorIndex(index: number, limit: number): number {
+  if (index < 0) index += limit;
+  return index;
+}
+
+/**
+ * Sanitizes an index denoting the start of a range within a longer array-like structure.
+ * Effectively ensures that it is within [0, limit].
+ * You can use a negative index to {@link mirrorIndex | count back from the end}.
+ * If start is omitted, 0 is assumed.
+ * @returns the sanitized, positive index
+ */
+export function sanitizeRangeStart(limit: number, start = 0): number {
+  return Math.min(Math.max(0, mirrorIndex(start, limit)), limit);
+}
+
+/**
+ * Sanitizes an index denoting the end of a range within a longer array-like structure.
+ * Effectively ensures that it is within [start, limit].
+ * You can use negative indices to {@link mirrorIndex | count back from the end}.
+ * If end is omitted, limit is assumed.
+ * If start is omitted, 0 is assumed.
+ */
+export function sanitizeRangeEnd(limit: number, end = limit, start = 0): number {
+  return Math.max(mirrorIndex(end, limit), mirrorIndex(start, limit));
+}
+
+/**
+ * Sanitizes the length of a range within a longer array-like structure, such that it does not exceed the end of that structure.
+ * Effectively ensures that it is within [0, limit - start].
+ * You can use a negative start index to {@link mirrorIndex | count back from the end}.
+ * If start is omitted, 0 is assumed.
+ * @see {@link sanitizeRangeStart} and {@link sanitizeRangeEnd}.
+ */
+export function sanitizeRangeLength(limit: number, length: number, start = 0): number {
+  start = sanitizeRangeStart(limit, start);
+  return sanitizeRangeEnd(limit, start + length) - start;
+}
 
 /**
  * If the given array contains an element matching the given predicate, returns its value,

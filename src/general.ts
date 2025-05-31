@@ -1,6 +1,6 @@
 import { isObject } from './object';
 import { isBlank } from './string';
-import { Predicate } from './types';
+import { Predicate, Transformation } from './types';
 
 /**
  * Semantic interface for a function that cancels an action.
@@ -55,7 +55,7 @@ export function isCloneable<T>(value: unknown): value is Cloneable<T> {
 /**
  * A function that does nothing, similar to `noop` in other libraries but more descriptive.
  */
-export function ignore(...args: any): void {
+export function ignore(...args: any): undefined {
 }
 
 /**

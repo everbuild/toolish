@@ -1,155 +1,109 @@
-import { areEqual, Cancel, Cloneable, passThrough, Resource } from './general';
-import { isObject, mapProperties } from './object';
-import { Consumer, Transformation } from './types';
+import { mirrorIndex } from '../array';
+import { Cancel, passThrough } from '../general';
+import { isObject, mapProperties } from '../object';
+import { Consumer, GenericFunction, isPresent, Transformation } from '../types';
+import type { ElementFactory, ReactiveArray } from './array';
+import { ReactiveCache, WeakReactiveCache } from './cache';
+import { ReactiveConsumer } from './consumer';
+import type { ComponentFactory } from './container';
+import type { Derivation, ReactiveDerivative } from './derivative';
+import { NO_CACHE, NO_TRACK, ReactiveFactory } from './internal';
+import type { ReactiveObject } from './object';
+import type { Publisher, Subscriber, SubscriptionTracker } from './publisher';
+import type { ReactiveValue } from './value';
 
 export type MaybeReactive<T> = T | Reactive<T>;
 
-export type ReactiveNested<T> = T extends Array<infer E> ? ReactiveArray<ReactiveNested<E>> : T extends object ? ReactiveObject<{ [K in keyof T]: ReactiveNested<T[K]> }> : ReactiveValue<T>;
+export type MaybeReactiveDeep<T> =
+  T
+  | Reactive<T>
+  | Reactive<Reactive<T>>
+  | Reactive<Reactive<Reactive<T>>>
+  | Reactive<Reactive<Reactive<Reactive<T>>>>
+  | Reactive<Reactive<Reactive<Reactive<Reactive<T>>>>>
+  | Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<T>>>>>>
+  | Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<T>>>>>>>>
+  | Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<T>>>>>>>>>
+  | Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<T>>>>>>>>>>
+  | Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<T>>>>>>>>>>>;
+
+export type Unreactive<T> = T extends Reactive<infer V> ? Unreactive<V> : T;
+
+export type ReactiveVariant<T> = T extends Reactive<any> ? T : T extends Array<infer E> ? ReactiveArray<E> : T extends object ? ReactiveObject<{ [K in keyof T]: T[K] }> : ReactiveValue<T>;
 
 export type UnreactiveNested<T> = T extends Reactive<infer V> ? UnreactiveNested<V> : T extends Array<infer E> ? Array<UnreactiveNested<E>> : T extends object ? { [K in keyof T]: UnreactiveNested<T[K]> } : T;
 
-export type UnreactiveDeep<T> = T extends Reactive<infer V> ? UnreactiveDeep<V> : T;
-
-export type Selection<T, K extends keyof T> = T extends Array<any> | object ? T[K] : undefined;
-
-export interface Derivation<T> {
-  (tracker: SubscriptionTracker): T;
-}
-
-export interface PropertyRemover<T> {
-  (value: T, key: keyof T): void;
-}
-
 /**
- * Notifies its subscribers when data gets updated
+ * Like {@link Transformation} but also gets passed a {@link SubscriptionTracker} that
+ * should be used whenever additional {@link Reactive} values are depended on.
  */
-export interface Publisher {
-  subscribe(subscriber: Subscriber): void;
-
-  unsubscribe(subscriber: Subscriber): void;
-
-  updateSubscribers(): void;
-
-  hasSubscribers(): boolean;
-}
-
-/**
- * Receives notifications when data gets updated
- */
-export interface Subscriber {
-  update(): void;
-}
-
-/**
- * Can subscribe to a given publisher to receive notifications when data gets updated
- */
-export interface SubscriptionTracker {
-  subscribeTo(publisher: Publisher): void;
-}
-
-export interface ReactiveCache {
-  set(raw: any, reactive: Reactive<any>): void;
-
-  get(raw: any): Reactive<any> | undefined;
-}
-
-/**
- * {@link ReactiveCache} implementation that only caches objects using a [WeakMap](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakMap).
- * Requests to store other types of values are ignored.
- */
-export class WeakReactiveCache implements ReactiveCache {
-  private map = new WeakMap<WeakKey, Reactive<any>>();
-
-  set(raw: any, reactive: Reactive<any>): void {
-    if (this.supports(raw)) this.map.set(raw, reactive);
-  }
-
-  get(raw: any): Reactive<any> | undefined {
-    const reactive = this.supports(raw) && this.map.get(raw);
-    if (reactive) {
-      if (areEqual(raw, reactive.unwrapNested())) return reactive;
-      this.map.delete(raw);
-    }
-  }
-
-  private supports(raw: any): raw is WeakKey {
-    return isObject(raw);
-  }
-}
-
-/**
- * {@link ReactiveCache} implementation that doesn't cache anything.
- * Used to disable caching while retaining a consistent API.
- */
-export class NullReactiveCache implements ReactiveCache {
-  static DEFAULT = new NullReactiveCache();
-
-  set(raw: any, reactive: Reactive<any>): void {
-  }
-
-  get(raw: any): undefined {
-  }
-}
-
-class ReactiveConsumer<T> implements Subscriber, Resource {
-  constructor(
-    private base: Reactive<T>,
-    private consumer: Consumer<T>,
-  ) {
-    this.base.subscribe(this);
-    this.update();
-  }
-
-  update(): void {
-    this.consumer(this.base.unwrap());
-  }
-
-  free() {
-    this.base.unsubscribe(this);
-  }
-}
+export type ReactiveTransformation<T, R> = GenericFunction<[T, SubscriptionTracker], R>;
 
 /**
  * Base class representing a reactive value.
  * As a main API entry-point, it provides a number of static factory functions to convert between normal and appropriate reactive values.
  *
  * @see {@link ReactiveValue} for a subclass that wraps an actual value
- * @see {@link ReactiveDerivation} for a subclass that produces a new reactive value based on other reactive values
+ * @see {@link ReactiveDerivative} for a subclass that produces a new reactive value based on other reactive values
  */
 export abstract class Reactive<T> implements Publisher {
-  static UNNESTED_CACHE = new WeakReactiveCache();
+  static DIRECT_CACHE = new WeakReactiveCache();
   static NESTED_CACHE = new WeakReactiveCache();
+  static NO_CACHE = NO_CACHE;
+  static NO_TRACK = NO_TRACK;
 
   private subscribers = new Set<Subscriber>();
 
   /**
-   * Returns a ReactiveValue for the given value if it is not already reactive, otherwise it is returned as is.
-   * If the cache already contains a reactive counterpart, that is reused instead.
-   * @param source
-   * @param cache pass false to disable caching or a custom {@link ReactiveCache}
+   * Like {@link of:value} but returns any already reactive value as is.
    */
-  static of<T>(source: T, cache: ReactiveCache | false = Reactive.UNNESTED_CACHE): T extends Reactive<any> ? T : ReactiveValue<T> {
-    return Reactive.wrap(source, false, cache || NullReactiveCache.DEFAULT);
-  }
+  static of<T extends Reactive<any>>(source: T): T;
 
   /**
-   * Like {@link of}, but if the given value is an array or object, its elements or properties are also converted.
-   * If these are themselves arrays or objects, the same logic is applied, and so on until the entire graph is reactive.
+   * Like {@link of:value} but wraps an array as a {@link ReactiveArray}.
+   * @label array
    */
-  static nest<T>(source: T, cache: ReactiveCache | false = Reactive.NESTED_CACHE): T extends Reactive<any> ? T : ReactiveNested<T> {
-    return Reactive.wrap(source, true, cache || NullReactiveCache.DEFAULT);
-  }
+  static of<T>(source: Array<T>, cache?: ReactiveCache): ReactiveArray<T>;
 
-  private static wrap(source: any, nest: boolean, cache: ReactiveCache): any {
+  /**
+   * Like {@link of:array} but allows specifying how elements are created.
+   */
+  static of<T>(source: Array<T>, createElement: ElementFactory<T>, cache?: ReactiveCache): ReactiveArray<T>;
+
+  /**
+   * Like {@link of:value} but wraps an object as a {@link ReactiveObject}.
+   * @label object
+   */
+  static of<T extends object>(source: T, cache?: ReactiveCache): ReactiveObject<T>;
+
+  /**
+   * Like {@link of:object} but allows specifying how property values are created.
+   */
+  static of<T extends object>(source: T, createProperty: ComponentFactory<T>, cache?: ReactiveCache): ReactiveObject<T>;
+
+  /**
+   * Wraps the given value as a {@link ReactiveValue}.
+   * If the cache already contains a reactive counterpart, that is recycled instead.
+   *
+   * @param source original value
+   * @param cache pass a custom {@link ReactiveCache} or {@link NO_CACHE} to disable caching. Default: {@link DIRECT_CACHE}
+   *
+   * @label value
+   */
+  static of<T>(source: T, cache?: ReactiveCache): ReactiveValue<T>;
+
+  static of(source: any, ...rest: Array<any>): any {
     if (source instanceof Reactive) return source;
+    const cache: ReactiveCache = rest.pop() || Reactive.DIRECT_CACHE;
+    const createComponent = rest.pop() || passThrough;
     let result = cache.get(source);
     if (!result) {
-      if (nest && Array.isArray(source)) {
-        result = new ReactiveArray(source.map(v => ReactiveValue.wrap(v, nest, cache)));
-      } else if (nest && isObject(source)) {
-        result = new ReactiveObject(mapProperties(source, v => ReactiveValue.wrap(v, nest, cache)));
+      if (Array.isArray(source)) {
+        result = ReactiveFactory.array(source, createComponent);
+      } else if (isObject(source)) {
+        result = ReactiveFactory.object(source, createComponent);
       } else {
-        result = new ReactiveValue(source);
+        result = ReactiveFactory.value(source);
       }
       cache.set(source, result);
     }
@@ -157,174 +111,224 @@ export abstract class Reactive<T> implements Publisher {
   }
 
   /**
-   * Convenience function to create a {@link ReactiveDerivation}.
+   * Like {@link nest:object} but returns any already reactive value as is.
    */
-  static derive<T>(derivation: Derivation<T>): ReactiveDerivation<T> {
-    return new ReactiveDerivation(derivation);
+  static nest<T extends Reactive<any>>(source: T): T;
+
+  /**
+   * Like {@link nest:object} but for arrays.
+   */
+  static nest<T>(source: Array<T>, arrayCache?: ReactiveCache, elementCache?: ReactiveCache): ReactiveArray<ReactiveVariant<T>>;
+
+  /**
+   * Like {@link of:object} but also makes all properties reactive.
+   * Useful for improving {@link ReactiveValue.patch | patch performance}.
+   *
+   * Note that this is limited to direct properties only, any nested values are left as is.
+   *
+   * Since the root object and properties are transformed differently, you can provide a separate cache for both.
+   * By default, {@link NESTED_CACHE} is used for the root object and {@link DIRECT_CACHE} for the properties.
+   *
+   * @label object
+   */
+  static nest<T extends object>(source: T, objectCache?: ReactiveCache, propertyCache?: ReactiveCache): ReactiveObject<{ [K in keyof T]: ReactiveVariant<T[K]> }>;
+
+  static nest(source: any, parentCache = this.NESTED_CACHE, childCache?: ReactiveCache): any {
+    if (source instanceof Reactive) return source;
+    let result = parentCache.get(source);
+    if (!result) {
+      const componentFactory = (v: any) => Reactive.of(v, childCache);
+      const nested: any = Array.isArray(source) ? source.map(componentFactory) : mapProperties(source, componentFactory);
+      result = Reactive.of(nested, componentFactory, NO_CACHE);
+      parentCache.set(source, result);
+    }
+    return result;
   }
 
   /**
-   * {@link unwrap | Unwraps} the given value if it is reactive.
-   * If the resulting value is also reactive it is also unwrapped, and so on.
-   * Optionally pass in a {@link SubscriptionTracker} to track reactivity.
-   * WARNING: bypasses reactivity if no tracker is provided!
-   * @see {@link flatten} for a similar operation.
+   * Deeply unwraps the given value.
+   * This means that the value is {@link unwrap:instance | unwrapped} if it is {@link Reactive}, otherwise it is returned as is.
+   * This is then repeated as long as needed until an unreactive value is found.
+   * @label static
    */
-  static unwrap<T>(value: T, tracker?: SubscriptionTracker): UnreactiveDeep<T> {
-    while (value instanceof Reactive) {
-      tracker?.subscribeTo(value);
-      value = value.unwrap();
-    }
+  static unwrap<T>(value: T, tracker: SubscriptionTracker): Unreactive<T> {
+    while (value instanceof Reactive) value = value.get(tracker);
     return value as any;
   }
 
   /**
-   * {@link unwrap | Unwraps} the given value if it is reactive and any nested properties or elements in case of an object or array respectively.
-   * WARNING: bypasses reactivity!
+   * {@link unwrap:static | Unwraps} the given value and any deeply nested properties or array elements.
+   * @label static
    */
-  static unwrapNested<T>(value: T): UnreactiveNested<T>;
-  static unwrapNested(value: any): any {
-    if (value instanceof Reactive) return Reactive.unwrapNested(value.unwrap());
-    if (Array.isArray(value)) return value.map(Reactive.unwrapNested);
-    if (isObject(value)) return mapProperties(value, Reactive.unwrapNested);
+  static unnest<T>(value: T, tracker: SubscriptionTracker): UnreactiveNested<T>;
+  static unnest(value: any, tracker: SubscriptionTracker): any {
+    if (value instanceof Reactive) return Reactive.unnest(value.get(tracker), tracker);
+    if (Array.isArray(value)) return value.map(v => Reactive.unnest(v, tracker));
+    if (isObject(value)) return mapProperties(value, v => Reactive.unnest(v, tracker));
     return value;
   }
 
   /**
-   * Convenience function that allows passing a value that is optionally reactive.
-   * Calls {@link map} if the value is reactive, otherwise applies the transformation directly.
+   * Factory function to create a {@link ReactiveDerivative}.
+   * @label static
    */
-  static map<T, R>(value: MaybeReactive<T>, transform: Transformation<T, R>): MaybeReactive<R> {
-    if (value instanceof Reactive) return value.map(transform) as any;
-    else return transform(value);
+  static derive<T>(derivation: Derivation<T>): ReactiveDerivative<T>;
+
+  /**
+   * Convenience function that allows passing a value that is optionally reactive.
+   * Calls {@link derive:instance} if the given value is reactive, otherwise applies the transformation directly.
+   * @label staticMaybe
+   */
+  static derive<T, R>(value: MaybeReactive<T>, transform: ReactiveTransformation<T, R>): MaybeReactive<R>;
+
+  static derive(subject: any, transform?: any): any {
+    if (transform) {
+      if (subject instanceof Reactive) return subject.derive(transform);
+      else return transform(subject, NO_TRACK);
+    } else {
+      return ReactiveFactory.derivative(subject);
+    }
   }
 
   /**
-   * Convenience function that converts an array of optionally reactive values into a single reactive value with an array of unwrapped values.
-   * If none of the given values is reactive, the array is returned as is.
+   * Convenience function that converts an array of optionally reactive values into an optionally reactive array.
+   * The result is reactive if one of the given values is reactive, otherwise the given array is returned as is.
+   * @label basic
    */
   static combine<T>(values: Array<MaybeReactive<T>>): MaybeReactive<Array<T>>;
 
   /**
-   * Like {@link combine} with a single argument, but allows passing a function that transforms the array of unwrapped values into something else.
-   * Effectively a shorthand for `Reactive.map(Reactive.combine(values), transform)`.
+   * Like {@link combine:basic}, but allows passing a function that transforms the array of unwrapped values into something else.
+   * Effectively a shorthand for `Reactive.derive(Reactive.combine(values), transform)`.
    * NOTE if none of the given values is reactive, transform is applied to the original array.
    */
   static combine<T, R>(values: Array<MaybeReactive<T>>, transform: Transformation<Array<T>, R>): MaybeReactive<R>;
 
-  static combine(values: Array<any>, transform: Transformation<any, any> = passThrough): Array<any> | Reactive<Array<any>> {
+  static combine(values: Array<any>, transform: ReactiveTransformation<any, any> = passThrough): Array<any> | Reactive<any> {
     if (values.some(v => v instanceof Reactive)) {
       return Reactive.derive(t => {
         const rawValues = values.map(v => Reactive.unwrap(v, t));
-        return Reactive.unwrap(transform(rawValues), t);
+        return Reactive.unwrap(transform(rawValues, t), t);
       });
     } else {
-      return transform(values);
+      return transform(values, NO_TRACK);
     }
   }
 
   /**
    * Convenience function that allows passing a value that is optionally reactive.
-   * Calls {@link consume} if the value is reactive, otherwise calls the consumer directly.
+   * Calls {@link consume:instance} if the value is reactive, otherwise calls the consumer directly.
    */
-  static consume<T>(value: MaybeReactive<T>, consumer: Consumer<T>): Cancel | undefined {
+  static consume<T>(value: T, consumer: Consumer<Unreactive<T>>): Cancel | undefined {
     if (value instanceof Reactive) return value.consume(consumer);
-    else consumer(value);
+    else consumer(value as any);
   }
 
   /**
-   * Convenience function that {@link unwrap | unwraps} the underlying value and creates a subscription using the given tracker.
-   * Mostly useful in a {@link ReactiveDerivation}.
-   * @param tracker
+   * Reactively consume the underlying value.
+   * @param consumer function called immediately with the current value and then whenever the value is updated.
+   * @returns a function to stop calling the consumer and free up associated resources.
+   * @label instance
    */
-  get(tracker: SubscriptionTracker): T;
+  consume(consumer: Consumer<T>): Cancel {
+    const rc = new ReactiveConsumer(this, consumer);
+    return () => rc.free();
+  }
 
   /**
-   * Convenience alias for {@link consume}.
-   * @param consumer
+   * Reactively {@link unwrap:instance} the underlying value, creating a subscription to track its dependants using the given tracker.
+   * Useful in e.g. a {@link ReactiveDerivative}.
    */
-  get(consumer: Consumer<T>): Cancel;
-
-  /**
-   * Convenience alias for {@link select}.
-   */
-  get<K extends keyof T>(key: K): ReactiveDerivation<UnreactiveDeep<Selection<T, K>>>;
-
-  get(subject: any): any {
-    switch (typeof subject) {
-      case 'function':
-        return this.consume(subject);
-      case 'number':
-      case 'string':
-        return this.select(subject as any);
-    }
-    subject.subscribeTo(this);
+  get(tracker: SubscriptionTracker): T {
+    tracker.subscribeTo(this);
     return this.unwrap();
   }
 
   /**
-   * Consume the underlying value in a reactive way.
-   * @param consumer callback that will be called immediately with the current value and whenever the value is updated.
-   * @returns a function to stop calling the consumer and free up associated resources.
-   */
-  consume(consumer: Consumer<T>): Cancel {
-    const e = new ReactiveConsumer(this, consumer);
-    return () => e.free();
-  }
-
-  /**
-   * Returns the current underlying value.
-   * WARNING: bypasses reactivity, you usually want to use {@link get} instead!
+   * Returns the current underlying value without tracking dependencies.
+   * Use {@link get} if you need reactivity.
+   * @label instance
    */
   abstract unwrap(): T;
 
   /**
-   * Calls {@link Reactive.unwrapNested} with this value.
+   * {@link unnest:static Unnest} this instance.
    */
-  unwrapNested(): UnreactiveNested<T> {
-    return Reactive.unwrapNested(this as Reactive<T>);
+  unnest(tracker: SubscriptionTracker): UnreactiveNested<T> {
+    return Reactive.unnest(this as Reactive<T>, tracker);
   }
 
   /**
-   * Creates a {@link ReactiveDerivation} that transforms the underlying value to something else.
-   * This only allows using the current ReactiveValue as a source, if you need multiple reactive sources use {@link derive} instead.
-   * If the transform function returns a reactive value it's unwrapped automatically similar to {@link flatten}.
+   * Creates a {@link ReactiveDerivative} that transforms the underlying value to something else.
+   * If the transform function returns a reactive value it's {@link unwrap:static deeply unwrapped} automatically.
    * @param transform function that receives the underlying value and produces a new one.
+   * @label instance
    */
-  map<R>(transform: Transformation<T, R>): ReactiveDerivation<UnreactiveDeep<R>> {
-    return new ReactiveDerivation(t => Reactive.unwrap(transform(this.get(t)), t));
+  derive<R>(transform: ReactiveTransformation<T, R>): ReactiveDerivative<R> {
+    return Reactive.derive(t => transform(this.get(t), t));
   }
 
   /**
-   * Creates a {@link ReactiveDerivation} that contains the property with the given name when the underlying value is an object,
+   * Creates a {@link ReactiveDerivative} that contains the property with the given name when the underlying value is an object,
    * or the element at the given index when the underlying value is an array.
-   * A negative index can be used to count back from the end (e.g. -1 = last element).
-   * An index or property name that is otherwise invalid (out of range) yields undefined.
-   * When the underlying value is neither an object nor an array, the resulting ReactiveDerivation also yields undefined.
-   * If the selected value is reactive it's unwrapped automatically similar to {@link flatten}.
-   * Note that (although not recommended) it is possible for the underlying value type to change between object, array or anything else,
-   * the resulting ReactiveDerivation will react accordingly.
+   * You can use a negative index to {@link mirrorIndex | count back from the end}.
+   *
+   * @remakrs
+   * * Performing this on a value that is not indexable (a primitive) results in a runtime error.
+   *   TypeScript prevents this at compile time, there are no additional checks at runtime.
+   * * An invalid property name yields `undefined`.
+   *   TypeScript prevents this at compile time, there are no additional checks at runtime.
+   * * An out-of-bounds index also yields `undefined`.
+   *   However, TypeScript does not normally prevent this at compile time as it hides the potential `undefined`!
+   *   There are also no additional checks at runtime because this may be intentional.
+   *
    * @param key property name or index
+   *
+   * @label single
    */
-  select<K extends keyof T>(key: K): ReactiveDerivation<UnreactiveDeep<Selection<T, K>>> {
-    return this.map(value => {
-      if (Array.isArray(value)) {
-        let i = key as number;
-        if (i < 0) i += value.length;
-        return value[i];
-      }
-      if (isObject(value)) {
-        return value[key];
-      }
-    });
-  }
+  select<K extends keyof T>(key: K): ReactiveDerivative<T[K]>;
 
   /**
-   * Creates a {@link ReactiveDerivation} that discards any redundant underlying reactive values.
-   * I.e. when the underlying value is itself reactive, its underlying value is used, and so on.
+   * {@link select:single} 2 levels deep
    */
-  flatten(): ReactiveDerivation<UnreactiveDeep<T>> {
-    return this.map(passThrough);
+  select<K1 extends keyof T, T2 extends Unreactive<T[K1]>, K2 extends keyof T2>(key1: K1, key2: K2): ReactiveDerivative<T2[K2]>;
+
+  /**
+   * {@link select:single} 3 levels deep
+   */
+  select<K1 extends keyof T, T2 extends Unreactive<T[K1]>, K2 extends keyof T2, T3 extends Unreactive<T2[K2]>, K3 extends keyof T3>(key1: K1, key2: K2, key3: K3): ReactiveDerivative<T3[K3]>;
+
+  /**
+   * {@link select:single} 4 levels deep
+   */
+  select<K1 extends keyof T, T2 extends Unreactive<T[K1]>, K2 extends keyof T2, T3 extends Unreactive<T2[K2]>, K3 extends keyof T3, T4 extends Unreactive<T3[K3]>, K4 extends keyof T4>(key1: K1, key2: K2, key3: K3, key4: K4): ReactiveDerivative<T4[K4]>;
+
+  /**
+   * {@link select:single} 5 levels deep
+   */
+  select<K1 extends keyof T, T2 extends Unreactive<T[K1]>, K2 extends keyof T2, T3 extends Unreactive<T2[K2]>, K3 extends keyof T3, T4 extends Unreactive<T3[K3]>, K4 extends keyof T4, T5 extends Unreactive<T4[K4]>, K5 extends keyof T5>(key1: K1, key2: K2, key3: K3, key4: K4, key5: K5): ReactiveDerivative<T5[K5]>;
+
+  /**
+   * {@link select:single} more than 5 levels deep without type checking.
+   * Consider combining multiple selects with a maximum depth of 5 instead.
+   */
+  select(...keys: Array<keyof any>): ReactiveDerivative<unknown>;
+
+  select(...keys: Array<keyof any>): ReactiveDerivative<any> {
+    return Reactive.derive(t => {
+      let value: any = this;
+      for (const key of keys) {
+        value = Reactive.unwrap(value, t);
+        if (Array.isArray(value)) {
+          value = value[mirrorIndex(Number(key), value.length)];
+        } else if (isPresent(value)) {
+          value = value[key];
+        } else {
+          throw new Error(`invalid selection: ${keys.join(' / ')}`);
+        }
+      }
+      return value;
+    });
   }
 
   subscribe(subscriber: Subscriber): void {
@@ -350,272 +354,6 @@ export abstract class Reactive<T> implements Publisher {
   }
 
   toString(): string {
-    return `reactive(${JSON.stringify(this.unwrapNested())})`;
-  }
-}
-
-/**
- * Wraps an actual value.
- *
- * @see {@link ReactiveObject} for a subclass that offers better support for object values
- * @see {@link ReactiveArray} for a subclass that offers better support for array values
- * @see {@link ReactiveDerivation} for a class that derives a value from other reactive values
- */
-export class ReactiveValue<T> extends Reactive<T> implements Cloneable<ReactiveValue<T>> {
-  /**
-   * Creates a new ReactiveValue with an initial value.
-   * @see {@link of} if your value may already be reactive or reuse a cached reactive value.
-   * @see {@link nest} to also convert nested array elements or object properties.
-   */
-  constructor(
-    protected value: T,
-  ) {
-    super();
-  }
-
-  unwrap(): T {
-    return this.value;
-  }
-
-  /**
-   * Replaces the entire underlying value.
-   * This is mostly appropriate for primitive types, see {@link patch} for a more efficient way of updating arrays and objects.
-   * NOTE that this has no effect if the underlying value is already strictly equal to the given value.
-   */
-  set(value: T): void {
-    if (value === this.value) return;
-    this.value = value;
-    this.updateSubscribers();
-  }
-
-  /**
-   * Attempts to perform a partial update of the underlying value based on the differences with the given value.
-   * This base implementation just calls {@link set} but is overridden in subclasses to provide more specialized implementations.
-   * Generally, they apply the patch logic recursively to any nested values in the entire graph.
-   * The main advantages of patch are that update handling is restricted to where it's really needed and reduced memory overhead.
-   * @param source unreactive source value to use
-   * @param cache cache to use when {@link Reactive.nest resolving nested values}
-   * @see {@link ReactiveObject.patch} and {@link ReactiveArray.patch}
-   */
-  patch(source: UnreactiveNested<T>, cache?: ReactiveCache): void {
-    this.set(source as T);
-  }
-
-  clone(): ReactiveValue<T> {
-    return new ReactiveValue<T>(this.value);
-  }
-}
-
-abstract class ReactiveComplexValue<T> extends ReactiveValue<T> {
-  protected dirty = false;
-
-  protected setComponent<K extends keyof T>(key: K, value: any, cache?: ReactiveCache): void {
-    const existing = this.value[key];
-    if (existing instanceof ReactiveValue) {
-      existing.patch(value, cache);
-    } else {
-      this.value[key] = Reactive.nest(value, cache);
-      this.dirty = true;
-    }
-  }
-
-  protected commit(): void {
-    if (this.dirty) {
-      this.updateSubscribers();
-      this.dirty = false;
-    }
-  }
-}
-
-/**
- * Wraps an object, supports {@link patch} and offers convenient methods to reactively mutate the object.
- */
-export class ReactiveObject<T extends Record<any, ReactiveValue<any>>> extends ReactiveComplexValue<T> {
-  /**
-   * Defines how properties are removed. By default, they're assigned to `undefined`.
-   */
-  static REMOVAL_STRATEGY: PropertyRemover<any> = (o, k) => o[k] = undefined;
-
-  /**
-   * Patches, adds or removes properties as needed to match the given source object.
-   * @see {@link REMOVAL_STRATEGY} to tweak how properties are removed.
-   * @see {@link ReactiveValue.patch} for more details.
-   */
-  patch(source: UnreactiveNested<T>, cache?: ReactiveCache): void {
-    const allKeys = Object.keys({ ...this.value, ...source }) as Array<keyof T>;
-    allKeys.forEach(k => k in source ? this.setComponent(k, source[k], cache) : this.removeComponent(k));
-    this.commit();
-  }
-
-  setProperty<K extends keyof T>(key: K, value: UnreactiveNested<T[K]>, cache?: ReactiveCache): void {
-    this.setComponent(key, value, cache);
-    this.commit();
-  }
-
-  removeProperty(key: keyof T): void {
-    this.removeComponent(key);
-    this.commit();
-  }
-
-  private removeComponent(key: keyof T): void {
-    if (key in this.value) {
-      ReactiveObject.REMOVAL_STRATEGY(this.value, key);
-      this.dirty = true;
-    }
-  }
-
-  clone(): ReactiveObject<T> {
-    return new ReactiveObject(this.value);
-  }
-}
-
-/**
- * Wraps an array, supports {@link patch} and offers convenient methods to reactively mutate the array.
- */
-export class ReactiveArray<T extends ReactiveValue<any>> extends ReactiveComplexValue<Array<T>> {
-  /**
-   * Patches, adds or removes elements as needed to match the given source array.
-   * @see {@link ReactiveValue.patch} for more details.
-   */
-  patch(source: Array<UnreactiveNested<T>>, cache?: ReactiveCache): void {
-    source.forEach((v, i) => this.setComponent(i, v, cache));
-    this.truncate(source.length);
-    this.commit();
-  }
-
-  addLast(...values: Array<UnreactiveNested<T>>): void {
-    this.splice(this.value.length, 0, values);
-  }
-
-  addFirst(...values: Array<UnreactiveNested<T>>): void {
-    this.splice(0, 0, values);
-  }
-
-  removeLast(count = 1): void {
-    this.remove(-count, count);
-  }
-
-  removeFirst(count = 1): void {
-    this.remove(0, count);
-  }
-
-  remove(index: number, count: number = 1): void {
-    this.splice(index, count);
-  }
-
-  insert(index: number, ...values: Array<UnreactiveNested<T>>): void {
-    this.splice(index, 0, values);
-  }
-
-  replace(index: number, ...values: Array<UnreactiveNested<T>>): void {
-    this.splice(index, values.length, values);
-  }
-
-  push(element: UnreactiveNested<T>): void {
-    this.addLast(element);
-  }
-
-  unshift(element: UnreactiveNested<T>): void {
-    this.addFirst(element);
-  }
-
-  pop(): UnreactiveNested<T> | undefined {
-    return this.kick(this.value.length - 1);
-  }
-
-  shift(): UnreactiveNested<T> | undefined {
-    return this.kick(0);
-  }
-
-  concat(...otherArrays: Array<Array<UnreactiveNested<T>>>): void {
-    this.doSplice(this.value.length, 0, otherArrays.flat());
-    this.commit();
-  }
-
-  splice(index: number, removeCount = 0, insertValues?: Array<UnreactiveNested<T>>, cache?: ReactiveCache): void {
-    index = index < 0 ? Math.max(this.value.length + index, 0) : Math.min(index, this.value.length);
-    removeCount = Math.min(removeCount, this.value.length - index);
-
-    const toInsert: Array<any> = insertValues ?? [];
-    const toReplace = toInsert.splice(0, removeCount);
-    removeCount -= toReplace.length;
-
-    toReplace.forEach(v => this.setComponent(index++, v, cache));
-
-    this.doSplice(index, removeCount, toInsert, cache);
-
-    this.commit();
-  }
-
-  private kick(i: number): UnreactiveNested<T> | undefined {
-    const result = Reactive.unwrapNested(this.value[i]);
-    this.remove(i);
-    return result;
-  }
-
-  private truncate(length: number): void {
-    this.doSplice(length, this.value.length - length);
-  }
-
-  private doSplice(index: number, removeCount: number, insertValues: Array<any> = [], cache?: ReactiveCache): void {
-    if (removeCount > 0 || insertValues.length > 0) {
-      this.value.splice(index, removeCount, ...insertValues.map(v => Reactive.nest(v, cache)));
-      this.dirty = true;
-    }
-  }
-
-  clone(): ReactiveArray<T> {
-    return new ReactiveArray(this.value);
-  }
-}
-
-/**
- * Produces a new reactive value based on other reactive values using a given {@link Derivation} function.
- * The function is called with a {@link SubscriptionTracker} that should be used to track the reactive values you depend on,
- * which ensures that it gets reevaluated whenever one of those dependencies change.
- * If you pass the tracker to {@link Reactive.get} this is done for you, so this is usually the most convenient way to go.
- * Note that the function is only evaluated when needed (on the first unwrap since its creation or since a dependency changed), effectively caching the result.
- */
-export class ReactiveDerivation<T> extends Reactive<T> implements Subscriber, SubscriptionTracker, Resource {
-  private valid = false;
-  private value?: T;
-  private subscriptions = new Set<Publisher>();
-
-  constructor(
-    private derivation: Derivation<T>,
-  ) {
-    super();
-  }
-
-  unwrap(): T {
-    if (this.valid) return this.value!;
-    const oldSubscriptions = [...this.subscriptions];
-    this.subscriptions.clear();
-    this.value = this.derivation(this);
-    oldSubscriptions.forEach(s => this.subscriptions.has(s) || s.unsubscribe(this));
-    this.valid = true;
-    return this.value;
-  }
-
-  update(): void {
-    this.valid = false;
-    this.updateSubscribers();
-  }
-
-  subscribeTo(publisher: Publisher): void {
-    publisher.subscribe(this);
-    this.subscriptions.add(publisher);
-  }
-
-  unsubscribe(subscriber: Subscriber) {
-    super.unsubscribe(subscriber);
-    if (!this.hasSubscribers()) this.free();
-  }
-
-  free(): void {
-    this.valid = false;
-    this.value = undefined;
-    this.subscriptions.forEach(s => s.unsubscribe(this));
-    this.subscriptions.clear();
+    return `reactive(${JSON.stringify(this.unnest(Reactive.NO_TRACK))})`;
   }
 }
