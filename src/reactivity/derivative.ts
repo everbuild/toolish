@@ -1,10 +1,10 @@
 import { ReusableResource } from '../general';
-import { MaybeReactiveDeep, Reactive, Unreactive } from './base';
+import { Reactive, Unreactive } from './base';
 import { ReactiveFactory } from './internal';
 import { Publisher, Subscriber, SubscriptionTracker } from './publisher';
 
 export interface Derivation<T> {
-  (tracker: SubscriptionTracker): MaybeReactiveDeep<T>;
+  (tracker: SubscriptionTracker): T;
 }
 
 /**

@@ -14,19 +14,6 @@ import type { ReactiveValue } from './value';
 
 export type MaybeReactive<T> = T | Reactive<T>;
 
-export type MaybeReactiveDeep<T> =
-  T
-  | Reactive<T>
-  | Reactive<Reactive<T>>
-  | Reactive<Reactive<Reactive<T>>>
-  | Reactive<Reactive<Reactive<Reactive<T>>>>
-  | Reactive<Reactive<Reactive<Reactive<Reactive<T>>>>>
-  | Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<T>>>>>>
-  | Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<T>>>>>>>>
-  | Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<T>>>>>>>>>
-  | Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<T>>>>>>>>>>
-  | Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<Reactive<T>>>>>>>>>>>;
-
 export type Unreactive<T> = T extends Reactive<infer V> ? Unreactive<V> : T;
 
 export type ReactiveVariant<T> = T extends Reactive<any> ? T : T extends Array<infer E> ? ReactiveArray<E> : T extends object ? ReactiveObject<{ [K in keyof T]: T[K] }> : ReactiveValue<T>;
