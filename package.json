@@ -84,7 +84,7 @@
     },
     "./reactivity": {
       "import": "./dist/reactivity.js",
-      "types": "./dist/dts/reactivity.d.ts"
+      "types": "./dist/dts/reactivity/index.d.ts"
     },
     "./string": {
       "import": "./dist/string.js",
