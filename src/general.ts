@@ -66,7 +66,7 @@ export function passThrough<T>(value: T): T {
 }
 
 /**
- * Creates a {@link Predicate} that returns true for the given value.
+ * Creates a {@link types.Predicate} that returns true for the given value.
  */
 export function equals<T>(value: T): Predicate<T> {
   return v => v === value;

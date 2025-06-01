@@ -5,7 +5,7 @@ export function isObject(value: unknown): value is object {
 }
 
 /**
- * Better typed version of {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/keys | Object.entries}
+ * Better typed version of {@link !Object.keys}
  */
 export function getPropertyNames<T extends object>(object: T): Array<keyof T> {
   return Object.keys(object) as Array<keyof T>;

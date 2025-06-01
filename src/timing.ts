@@ -72,7 +72,7 @@ export class Delay extends Deferred<void> implements Resource {
 
 /**
  * Convenience wrapper for `setInterval`.
- * @see https://developer.mozilla.org/en-US/docs/Web/API/Window/setInterval
+ * @see {@link !setInterval}
  * Uses `setInterval`, so the same [delay restrictions](https://developer.mozilla.org/en-US/docs/Web/API/Window/setInterval#delay_restrictions) apply.
  */
 export class Interval implements Resource {

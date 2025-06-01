@@ -1,7 +1,6 @@
 import { Resource } from '../general';
 import { Consumer } from '../types';
 import type { Reactive } from './base';
-import { NO_TRACK } from './internal';
 import { Subscriber } from './publisher';
 
 export class ReactiveConsumer<T> implements Subscriber, Resource {
@@ -14,7 +13,7 @@ export class ReactiveConsumer<T> implements Subscriber, Resource {
   }
 
   update(): void {
-    this.consumer(this.base.unwrap(NO_TRACK)); // already tracked in constructor
+    this.consumer(this.base.unwrap()); // already tracked in constructor
   }
 
   free() {

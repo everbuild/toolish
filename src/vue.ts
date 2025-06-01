@@ -101,7 +101,7 @@ export class ReactiveTimer implements Resource {
 
 /**
  * Convenience function that runs the given cleanup tasks on component unmount.
- * A task can either be an ordinary function or a {@link Resource} that needs to be freed.
+ * A task can either be an ordinary function or {@link general.Resource | a Resource that needs to be freed}.
  * @see https://vuejs.org/api/composition-api-lifecycle.html#onbeforeunmount
  */
 export function cleanup(...tasks: Array<() => any | Resource>): void {

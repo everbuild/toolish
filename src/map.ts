@@ -1,13 +1,17 @@
 import { Transformation } from './types';
 
-type MapTypes<K, V> = (K extends WeakKey ? (Map<K, V> | WeakMap<K, V>) : Map<K, V>);
+export type MapTypes<K, V> = (K extends WeakKey ? (Map<K, V> | WeakMap<K, V>) : Map<K, V>);
 
 
 /**
  * If the given map contains an entry for the given key, returns its value,
  * otherwise adds a new entry with the given value and returns that.
- * This is often a simpler alternative to a multimap, e.g.:
- * `getOrAddEntry(mapOfArrays, key, []).push(value)`
+ *
+ * @example
+ * Simple [multimap-like](https://en.wikipedia.org/wiki/Multimap) behaviour:
+ * ```
+ * getOrAddEntry(mapOfArrays, key, []).push(value)
+ * ```
  */
 export function getOrAddEntry<K, V>(map: MapTypes<K, V>, key: K, value: V): V {
   return getOrCreateEntry(map, key, () => value);

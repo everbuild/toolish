@@ -1,7 +1,7 @@
 import { ComponentFactory, ReactiveContainer } from './container';
 import { ReactiveDerivative } from './derivative';
 import { ReactiveFactory } from './internal';
-import type { PatchSource } from './value';
+import type { PatchSource,ReactiveValue } from './value';
 
 export interface PropertyRemover {
   (value: Record<keyof any, any>, key: keyof any): void;
@@ -35,7 +35,7 @@ export class ReactiveObject<T extends object> extends ReactiveContainer<T> {
   }
 
   /**
-   * Alias for {@link select:single}
+   * Alias for {@link Reactive.select:ONE}
    */
   getProperty<K extends keyof T>(key: K): ReactiveDerivative<T[K]> {
     return this.select(key);

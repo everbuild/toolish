@@ -10,7 +10,7 @@ export interface ReactiveCache {
 }
 
 /**
- * {@link ReactiveCache} implementation that only caches objects using a [WeakMap](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakMap).
+ * {@link ReactiveCache} implementation that only caches objects using a {@link !WeakMap}.
  * Requests to store other types of values are ignored.
  */
 export class WeakReactiveCache implements ReactiveCache {

@@ -1,9 +1,9 @@
-import { sanitizeRangeEnd, sanitizeRangeLength, sanitizeRangeStart, mirrorIndex } from '../array';
-import { MaybeReactive, Reactive, Unreactive } from './base';
+import { mirrorIndex, sanitizeRangeEnd, sanitizeRangeLength, sanitizeRangeStart } from '../array';
+import { Reactive, Unreactive } from './base';
 import { ComponentFactory, ReactiveContainer } from './container';
 import { ReactiveDerivative } from './derivative';
 import { ReactiveFactory } from './internal';
-import type { PatchSource } from './value';
+import type { PatchSource, ReactiveValue } from './value';
 
 export type ElementFactory<T> = (value: Unreactive<T>, key: number) => T;
 
@@ -29,7 +29,7 @@ export class ReactiveArray<T> extends ReactiveContainer<Array<T>> {
   }
 
   /**
-   * Alias for {@link select:single}
+   * Alias for {@link Reactive.select:ONE}
    */
   getElement(index: number): ReactiveDerivative<T> {
     return this.select(index);
@@ -37,7 +37,7 @@ export class ReactiveArray<T> extends ReactiveContainer<Array<T>> {
 
   /**
    * Updates the element at the given index.
-   * You can use a negative index to {@link mirrorIndex | count back from the end}.
+   * You can use a negative index to {@link array.mirrorIndex | count back from the end}.
    */
   setElement(index: number, value: PatchSource<T>): this {
     this.patchComponent(mirrorIndex(this.value.length, index), value);
@@ -47,7 +47,7 @@ export class ReactiveArray<T> extends ReactiveContainer<Array<T>> {
 
   /**
    * Append elements to the end of the array.
-   * This is comparable to {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/push | native push } but with arguably clearer naming.
+   * This is comparable to {@link !Array.push} but with arguably clearer naming.
    */
   addLast(...values: Array<Unreactive<T>>): void {
     this.splice(this.value.length, 0, values);
@@ -55,7 +55,7 @@ export class ReactiveArray<T> extends ReactiveContainer<Array<T>> {
 
   /**
    * Insert elements to the beginning of the array.
-   * This is comparable to {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/unshift | native unshift } but with arguably clearer naming.
+   * This is comparable to {@link !Array.unshift} but with arguably clearer naming.
    */
   addFirst(...values: Array<Unreactive<T>>): void {
     this.splice(0, 0, values);
@@ -63,7 +63,7 @@ export class ReactiveArray<T> extends ReactiveContainer<Array<T>> {
 
   /**
    * Remove elements from the end of the array.
-   * This is comparable to {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/pop | native pop } but with arguably clearer naming.
+   * This is comparable to {@link !Array.pop} but with arguably clearer naming.
    */
   removeLast(count = 1): void {
     this.remove(-count, count);
@@ -71,7 +71,7 @@ export class ReactiveArray<T> extends ReactiveContainer<Array<T>> {
 
   /**
    * Remove elements from the beginning of the array.
-   * This is comparable to {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/shift | native shift } but with arguably clearer naming.
+   * This is comparable to {@link !Array.shift} but with arguably clearer naming.
    */
   removeFirst(count = 1): void {
     this.remove(0, count);
@@ -137,7 +137,7 @@ export class ReactiveArray<T> extends ReactiveContainer<Array<T>> {
   }
 
   /**
-   * Reactive {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/splice | splice }.
+   * Reactive {@link !Array.splice}.
    */
   splice(index: number, removeCount = 0, insertValues?: Array<Unreactive<T>>): this {
     const limit = this.value.length;
@@ -165,7 +165,7 @@ export class ReactiveArray<T> extends ReactiveContainer<Array<T>> {
   }
 
   /**
-   * Reactive {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/fill | fill }.
+   * Reactive {@link !Array.fill}.
    */
   fill(value: PatchSource<T>, start?: number, end?: number): this {
     const limit = this.value.length;
@@ -179,7 +179,7 @@ export class ReactiveArray<T> extends ReactiveContainer<Array<T>> {
   }
 
   /**
-   * Reactive {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/copyWithin | copyWithin }.
+   * Reactive {@link !Array.copyWithin }.
    */
   copyWithin(target: number, start: number, end?: number): this {
     this.value.copyWithin(target, start, end);

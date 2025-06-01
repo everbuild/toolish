@@ -55,7 +55,7 @@ export abstract class AbstractEvent {
  * Supports handling events of a single type.
  * A typical use case is managing your own EventSource instances and registering handlers and submitting events directly trough them.
  *
- * E.g.
+ * @example
  * ```
  * const assetLoaded = new EventSource<AssetEvent>();
  * assetLoaded.handle(e => use(e.asset));
@@ -122,13 +122,13 @@ export class EventBus {
   /**
    * Like {@link EventSource.handle}, but for a specific event type.
    *
-   * E.g.:
+   * You're free to create a hierarchy of event classes and handle any subclass of {@link AbstractEvent}
+   * (including AbstractEvent itself, although it's usually only advisable for very general purposes, like debugging or logging).
+   *
+   * @example
    * ```
    * eventBus.handle(AssetEvent, e => use(e.asset));
    * ```
-   *
-   * You're free to create a hierarchy of event classes and handle any subclass of {@link AbstractEvent}
-   * (including AbstractEvent itself, although it's usually only advisable for very general purposes, like debugging or logging).
    */
   handle<T extends AbstractEvent>(type: Constructor<T>, handler: EventHandler<T>, priority?: number): Cancel {
     const source = getOrCreateEntry(this.sourceMap, type, () => new EventSource<any>());

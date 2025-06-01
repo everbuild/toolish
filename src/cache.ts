@@ -6,14 +6,14 @@ export interface CacheLoader<T, P extends Array<any>> {
 export interface TtlCacheOptions<P extends Array<any>> {
   /**
    * Time to live of any cache entry, in milliseconds (i.e. how long data is cached).
-   * Set to [infinity](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/POSITIVE_INFINITY) to never expire.
+   * Set to {@link !Number.POSITIVE_INFINITY} to never expire.
    * Default: 1 hour.
    */
   ttl: number;
 
   /**
    * Function used to generate a unique cache key for a given list of loader parameters.
-   * Default: [JSON.stringify](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify)
+   * Default: {@link !JSON.stringify}
    * @param params
    */
   getKey: (params: P) => string;

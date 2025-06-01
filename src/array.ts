@@ -33,8 +33,12 @@ export function mirrorIndex(index: number, limit: number): number {
  * Sanitizes an index denoting the start of a range within a longer array-like structure.
  * Effectively ensures that it is within [0, limit].
  * You can use a negative index to {@link mirrorIndex | count back from the end}.
+ *
  * If start is omitted, 0 is assumed.
+ *
  * @returns the sanitized, positive index
+ *
+ * @see {@link sanitizeRangeEnd} and {@link sanitizeRangeLength}.
  */
 export function sanitizeRangeStart(limit: number, start = 0): number {
   return Math.min(Math.max(0, mirrorIndex(start, limit)), limit);
@@ -44,8 +48,11 @@ export function sanitizeRangeStart(limit: number, start = 0): number {
  * Sanitizes an index denoting the end of a range within a longer array-like structure.
  * Effectively ensures that it is within [start, limit].
  * You can use negative indices to {@link mirrorIndex | count back from the end}.
+ *
  * If end is omitted, limit is assumed.
  * If start is omitted, 0 is assumed.
+ *
+ * @see {@link sanitizeRangeStart} and {@link sanitizeRangeLength}.
  */
 export function sanitizeRangeEnd(limit: number, end = limit, start = 0): number {
   return Math.max(mirrorIndex(end, limit), mirrorIndex(start, limit));
@@ -55,7 +62,9 @@ export function sanitizeRangeEnd(limit: number, end = limit, start = 0): number 
  * Sanitizes the length of a range within a longer array-like structure, such that it does not exceed the end of that structure.
  * Effectively ensures that it is within [0, limit - start].
  * You can use a negative start index to {@link mirrorIndex | count back from the end}.
+ *
  * If start is omitted, 0 is assumed.
+ *
  * @see {@link sanitizeRangeStart} and {@link sanitizeRangeEnd}.
  */
 export function sanitizeRangeLength(limit: number, length: number, start = 0): number {
@@ -225,8 +234,9 @@ export function sortArray<T>(array: Array<T>, order?: number): Array<T> {
  * Sorts an array in place by one or more specific keys.
  * If two elements compare equally with a given key, the next one is tried, and so on.
  * The same order is applied for all keys.
+ * {@label STRING_KEYS_SAME_ORDER}
  *
- * If you need to preserve the original array, make a copy first with e.g. [slice](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/slice).
+ * If you need to preserve the original array, make a copy first with e.g. {@link !Array.slice}.
  *
  * Values of differing types are sorted in groups in this order:
  * nullish, booleans, numbers (including numeric strings), strings (case-insensitive), symbols, objects (by their JSON representation), everything else.
@@ -238,32 +248,27 @@ export function sortArray<T>(array: Array<T>, order?: number): Array<T> {
  * @param order any positive number for ascending (default); negative for descending (0 retains original order, i.e. the sort has no effect)
  * @returns the given array
  *
- * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/sort
- *
- * @label stringKeysSameOrder
+ * @see {@link !Array.sort}
  */
 export function sortArrayBy<T>(array: Array<T>, key: MaybeArray<keyof T>, order?: number): Array<T>;
 
 /**
- * Like {@link sortArrayBy:stringKeysSameOrder}, but allows passing a specific order for each key.
+ * Like {@link sortArrayBy:STRING_KEYS_SAME_ORDER}, but allows passing a specific order for each key.
  * Ascending order is assumed for any key without corresponding order.
- *
- * @label stringKeysSeparateOrders
+ * {@label STRING_KEYS_SEPARATE_ORDERS}
  */
 export function sortArrayBy<T>(array: Array<T>, keys: Array<keyof T>, orders: Array<number>): Array<T>;
 
 /**
- * Like {@link sortArrayBy:stringKeysSameOrder}, but allows passing one or more functions that return the sort values of a given element.
- *
- * @label functionKeysSameOrder
+ * Like {@link sortArrayBy:STRING_KEYS_SAME_ORDER}, but allows passing one or more functions that return the sort values of a given element.
+ * {@label FUNCTION_KEYS_SAME_ORDER}
  */
 export function sortArrayBy<T>(array: Array<T>, key: MaybeArray<SortKeyProducer<T>>, order?: number): Array<T>;
 
 /**
- * Like {@link sortArrayBy:functionKeysSameOrder}, but allows passing a specific order for each key.
+ * Like {@link sortArrayBy:FUNCTION_KEYS_SAME_ORDER}, but allows passing a specific order for each key.
  * Ascending order is assumed for any key without corresponding order.
- *
- * @label functionKeysSeparateOrders
+ * {@label FUNCTION_KEYS_SEPARATE_ORDERS}
  */
 export function sortArrayBy<T>(array: Array<T>, keys: Array<SortKeyProducer<T>>, orders: Array<number>): Array<T>;
 

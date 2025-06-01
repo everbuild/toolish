@@ -25,7 +25,7 @@ export function isPromiseLike<T = unknown>(value: MaybePromiseLike<T>): value is
 
 /**
  * Promise wrapper that allows resolve and reject to be called externally
- * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise
+ * @see {@link !Promise}
  */
 export class Deferred<T> {
   promise: Promise<T>;
