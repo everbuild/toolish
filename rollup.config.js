@@ -3,7 +3,7 @@ import terser from '@rollup/plugin-terser';
 import { readdirSync } from 'node:fs';
 
 export default {
-  input: readdirSync('src').map(f => `src/${f}`),
+  input: readdirSync('src', { withFileTypes: true }).map(e => `src/${e.name}${(e.isDirectory() ? '/index.ts' : '')}`),
   plugins: [
     typescript({
       include: 'src/**/*',
@@ -14,5 +14,5 @@ export default {
     dir: 'dist',
     format: 'es',
   },
-  external: ['vue']
+  external: ['vue'],
 };

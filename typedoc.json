@@ -1,11 +1,23 @@
 {
-  "entryPoints": ["src"],
+  "entryPoints": [
+    "src/*.ts",
+    "src/reactivity/index.ts"
+  ],
   "out": "docs",
   "tsconfig": "tsconfig.json",
   "includeVersion": true,
   "readme": "README.md",
-  "entryPointStrategy": "expand",
-  "excludePrivate": true,
-  "excludeInternal": true,
-  "excludeExternals": true
+  "excludeExternals": true,
+  "useTsLinkResolution": false,
+  "sort": [
+    "source-order"
+  ],
+  "plugin": [
+    "typedoc-plugin-mdn-links",
+    "typedoc-plugin-no-inherit"
+  ],
+  "markdownLinkExternal": true,
+  "githubPages": true,
+  "inheritNone": true,
+  "router": "kind-dir"
 }

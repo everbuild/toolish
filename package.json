@@ -12,9 +12,9 @@
     "build": "rollup --config",
     "test": "jest",
     "docs": "typedoc",
-    "commit-docs": "git add ./docs && git commit -m 'updated docs' -- ./docs",
+    "docs:commit": "git add ./docs && git commit -m 'updated docs' -- ./docs",
     "preversion": "npm run test && npm run build && npm run update-exports",
-    "postversion": "npm run docs && npm run commit-docs",
+    "postversion": "npm run docs && npm run docs:commit",
     "prepublishOnly": "git push && git push --tags"
   },
   "keywords": [
@@ -39,7 +39,9 @@
     "rollup": "^4.21.2",
     "ts-jest": "^29.2.4",
     "tslib": "^2.7.0",
-    "typedoc": "^0.28.4",
+    "typedoc": "^0.28.5",
+    "typedoc-plugin-mdn-links": "^5.0.2",
+    "typedoc-plugin-no-inherit": "^1.6.1",
     "typescript": "^5.5.4",
     "vue": "3.5.13"
   },
