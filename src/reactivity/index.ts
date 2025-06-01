@@ -16,7 +16,7 @@
  * Its subclass {@link ReactiveValue} wraps an actual value, while {@link ReactiveDerivative} represents a derived value.
  * {@link ReactiveArray} is a specialization offering convenience methods to work with arrays and {@link ReactiveObject} is the same for objects.
  *
- * [tests](https://github.com/everbuild/toolish/blob/main/test/reactivity.test.ts | The tests contain more usage examples).
+ * [The tests contain more usage examples](https://github.com/everbuild/toolish/blob/main/test/reactivity.test.ts).
  *
  * @module
  */
