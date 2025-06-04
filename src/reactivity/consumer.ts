@@ -13,7 +13,7 @@ export class ReactiveConsumer<T> implements Subscriber, Resource {
   }
 
   update(): void {
-    this.consumer(this.base.unwrap()); // already tracked in constructor
+    this.consumer(this.base.unwrap());
   }
 
   free() {

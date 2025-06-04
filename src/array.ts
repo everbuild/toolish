@@ -22,7 +22,7 @@ const UNDEFINED_PLACEHOLDER = Symbol() as any;
  * If the given index is positive, it is returned as is.
  *
  * NOTE that no attempt is made to cap the resulting index in any way, it may even be negative again if the given index is larger than the limit.
- * You can use {@link sanitizeRangeStart} and {@link sanitizeRangeEnd} for that.
+ * You can use {@link normalizeRangeStart} and {@link normalizeRangeEnd} for that.
  */
 export function mirrorIndex(index: number, limit: number): number {
   if (index < 0) index += limit;
@@ -30,46 +30,44 @@ export function mirrorIndex(index: number, limit: number): number {
 }
 
 /**
- * Sanitizes an index denoting the start of a range within a longer array-like structure.
+ * Normalizes an index denoting the start of a range within a longer array-like structure.
  * Effectively ensures that it is within [0, limit].
  * You can use a negative index to {@link mirrorIndex | count back from the end}.
  *
  * If start is omitted, 0 is assumed.
  *
- * @returns the sanitized, positive index
- *
- * @see {@link sanitizeRangeEnd} and {@link sanitizeRangeLength}.
+ * @see {@link normalizeRangeEnd} and {@link normalizeRangeLength}.
  */
-export function sanitizeRangeStart(limit: number, start = 0): number {
+export function normalizeRangeStart(limit: number, start = 0): number {
   return Math.min(Math.max(0, mirrorIndex(start, limit)), limit);
 }
 
 /**
- * Sanitizes an index denoting the end of a range within a longer array-like structure.
+ * Normalizes an index denoting the end of a range within a longer array-like structure.
  * Effectively ensures that it is within [start, limit].
  * You can use negative indices to {@link mirrorIndex | count back from the end}.
  *
  * If end is omitted, limit is assumed.
  * If start is omitted, 0 is assumed.
  *
- * @see {@link sanitizeRangeStart} and {@link sanitizeRangeLength}.
+ * @see {@link normalizeRangeStart} and {@link normalizeRangeLength}.
  */
-export function sanitizeRangeEnd(limit: number, end = limit, start = 0): number {
+export function normalizeRangeEnd(limit: number, end = limit, start = 0): number {
   return Math.max(mirrorIndex(end, limit), mirrorIndex(start, limit));
 }
 
 /**
- * Sanitizes the length of a range within a longer array-like structure, such that it does not exceed the end of that structure.
+ * Normalizes the length of a range within a longer array-like structure, such that it does not exceed the end of that structure.
  * Effectively ensures that it is within [0, limit - start].
  * You can use a negative start index to {@link mirrorIndex | count back from the end}.
  *
  * If start is omitted, 0 is assumed.
  *
- * @see {@link sanitizeRangeStart} and {@link sanitizeRangeEnd}.
+ * @see {@link normalizeRangeStart} and {@link normalizeRangeEnd}.
  */
-export function sanitizeRangeLength(limit: number, length: number, start = 0): number {
-  start = sanitizeRangeStart(limit, start);
-  return sanitizeRangeEnd(limit, start + length) - start;
+export function normalizeRangeLength(limit: number, length: number, start = 0): number {
+  start = normalizeRangeStart(limit, start);
+  return normalizeRangeEnd(limit, start + length) - start;
 }
 
 /**
@@ -140,6 +138,16 @@ export function swapAllElementsBy<T>(array: Array<T>, replacement: T, predicate:
     if (match) array[i] = replacement;
     return match;
   });
+}
+
+/**
+ * Replaces the first array element matching the given value with the given replacement, or else adds it to the end of the array.
+ * @returns the original element if replaced, undefined if added
+ */
+export function swapOrAddElement<T>(array: Array<T>, value :T, replacement: T): T | undefined {
+  const result = swapElement(array, value, replacement);
+  if (result === undefined) array.push(replacement);
+  return result;
 }
 
 /**
@@ -239,16 +247,17 @@ export function sortArray<T>(array: Array<T>, order?: number): Array<T> {
  * If you need to preserve the original array, make a copy first with e.g. {@link !Array.slice}.
  *
  * Values of differing types are sorted in groups in this order:
- * nullish, booleans, numbers (including numeric strings), strings (case-insensitive), symbols, objects (by their JSON representation), everything else.
+ * nullish, booleans, numbers (including numeric strings), strings, symbols, objects, functions.
+ * Objects are sorted by {@link !Object.valueOf} if that returns a primitive, their JSON representation otherwise (note arrays fall into this category as well).
+ * Functions are sorted by {@link !Function.toString}.
+ * All strings are sorted case-insensitive (including string obtained from objects or functions)
  *
- * NOTE this is unlike default `Array.sort` behaviour, which sorts by string representation and moves all undefined elements to the end.
+ * NOTE this is unlike {@link !Array.sort}, which sorts by string representation and moves all undefined elements to the end.
  *
  * @param array
  * @param key name of an element property
  * @param order any positive number for ascending (default); negative for descending (0 retains original order, i.e. the sort has no effect)
  * @returns the given array
- *
- * @see {@link !Array.sort}
  */
 export function sortArrayBy<T>(array: Array<T>, key: MaybeArray<keyof T>, order?: number): Array<T>;
 
@@ -335,9 +344,13 @@ function getComparisonGroup(value: any): number {
 }
 
 function getComparisonValue(value: any): any {
-  if (isObject(value)) return JSON.stringify(value);
+  if (isObject(value)) {
+    value = value.valueOf();
+    if (isObject(value)) value = JSON.stringify(value);
+  }
+  if (typeof value === 'function') value = value.toString();
+  if (typeof value === 'symbol') value = value.toString();
   if (typeof value === 'string') return value.toLocaleLowerCase();
-  if (typeof value === 'symbol') return value.toString();
   return value;
 }
 

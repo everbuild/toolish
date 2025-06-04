@@ -21,7 +21,7 @@ export type ReactiveVariant<T> = T extends Reactive<any> ? T : T extends Array<i
 export type UnreactiveNested<T> = T extends Reactive<infer V> ? UnreactiveNested<V> : T extends Array<infer E> ? Array<UnreactiveNested<E>> : T extends object ? { [K in keyof T]: UnreactiveNested<T[K]> } : T;
 
 /**
- * Like {@link types.Transformation} but also gets passed a {@link SubscriptionTracker} that
+ * Like {@link !types.Transformation} but also gets passed a {@link SubscriptionTracker} that
  * should be used whenever additional {@link Reactive} values are depended on.
  */
 export type ReactiveTransformation<T, R> = GenericFunction<[T, SubscriptionTracker], R>;

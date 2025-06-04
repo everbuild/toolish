@@ -1,4 +1,6 @@
-import { mirrorIndex, sanitizeRangeEnd, sanitizeRangeLength, sanitizeRangeStart } from '../array';
+import { mirrorIndex, normalizeRangeEnd, normalizeRangeLength, normalizeRangeStart } from '../array';
+import { equals } from '../general';
+import { DualPredicate, Predicate } from '../types';
 import { Reactive, Unreactive } from './base';
 import { ComponentFactory, ReactiveContainer } from './container';
 import { ReactiveDerivative } from './derivative';
@@ -9,6 +11,27 @@ export type ElementFactory<T> = (value: Unreactive<T>, key: number) => T;
 
 /**
  * Wraps an array, supports {@link patch} and offers convenience methods to reactively mutate the array.
+ *
+ * @example
+ * ```
+ * // ReactiveArray supports most standard array mutation methods
+ * // notice some signatures are slightly different though
+ * reactiveArray.splice(1, 3, [3, 7]);
+ *
+ * // aliases are provided in an attempt to clarify some confusing names; e.g. these are equivalent:
+ * reactiveArray.addFirst(7);
+ * reactiveArray.unshift(7);
+ *
+ * // additional utility methods similar to those provided by the array module are also available
+ * reactiveArray.removeAll(1337);
+ *
+ * // Non-mutating standard array methods are not replicated
+ * // they can easily be used through derive:
+ * reactiveArray.derive(a => a.filter(...));
+ *
+ * // or if no reactivity is needed, just unwrap:
+ * reactiveArray.unwrap().filter(...);
+ * ```
  */
 export class ReactiveArray<T> extends ReactiveContainer<Array<T>> {
   constructor(
@@ -31,7 +54,7 @@ export class ReactiveArray<T> extends ReactiveContainer<Array<T>> {
   /**
    * Alias for {@link Reactive.select:ONE}
    */
-  getElement(index: number): ReactiveDerivative<T> {
+  getAt(index: number): ReactiveDerivative<T> {
     return this.select(index);
   }
 
@@ -39,7 +62,7 @@ export class ReactiveArray<T> extends ReactiveContainer<Array<T>> {
    * Updates the element at the given index.
    * You can use a negative index to {@link array.mirrorIndex | count back from the end}.
    */
-  setElement(index: number, value: PatchSource<T>): this {
+  setAt(index: number, value: PatchSource<T>): this {
     this.patchComponent(mirrorIndex(this.value.length, index), value);
     this.commit();
     return this;
@@ -66,7 +89,7 @@ export class ReactiveArray<T> extends ReactiveContainer<Array<T>> {
    * This is comparable to {@link !Array.pop} but with arguably clearer naming.
    */
   removeLast(count = 1): void {
-    this.remove(-count, count);
+    this.removeAt(-count, count);
   }
 
   /**
@@ -74,27 +97,27 @@ export class ReactiveArray<T> extends ReactiveContainer<Array<T>> {
    * This is comparable to {@link !Array.shift} but with arguably clearer naming.
    */
   removeFirst(count = 1): void {
-    this.remove(0, count);
+    this.removeAt(0, count);
   }
 
   /**
    * Remove elements at the given index within the array.
    */
-  remove(index: number, count: number = 1): void {
+  removeAt(index: number, count: number = 1): void {
     this.splice(index, count);
   }
 
   /**
    * Insert elements at the given index within the array.
    */
-  insert(index: number, ...values: Array<Unreactive<T>>): void {
+  insertAt(index: number, ...values: Array<Unreactive<T>>): void {
     this.splice(index, 0, values);
   }
 
   /**
    * Replace elements at the given index within the array.
    */
-  replace(index: number, ...values: Array<Unreactive<T>>): void {
+  swapAt(index: number, ...values: Array<Unreactive<T>>): void {
     this.splice(index, values.length, values);
   }
 
@@ -128,7 +151,7 @@ export class ReactiveArray<T> extends ReactiveContainer<Array<T>> {
 
   private kick(i: number): Unreactive<T> | undefined {
     const result = Reactive.unwrap(this.value[i], Reactive.NO_TRACK);
-    this.remove(i);
+    this.removeAt(i);
     return result;
   }
 
@@ -141,8 +164,8 @@ export class ReactiveArray<T> extends ReactiveContainer<Array<T>> {
    */
   splice(index: number, removeCount = 0, insertValues?: Array<Unreactive<T>>): this {
     const limit = this.value.length;
-    index = sanitizeRangeStart(limit, index);
-    removeCount = sanitizeRangeLength(limit, removeCount, index);
+    index = normalizeRangeStart(limit, index);
+    removeCount = normalizeRangeLength(limit, removeCount, index);
 
     const toInsert: Array<any> = insertValues ?? [];
     const toReplace = toInsert.splice(0, removeCount);
@@ -169,8 +192,8 @@ export class ReactiveArray<T> extends ReactiveContainer<Array<T>> {
    */
   fill(value: PatchSource<T>, start?: number, end?: number): this {
     const limit = this.value.length;
-    start = sanitizeRangeStart(limit, start);
-    end = sanitizeRangeEnd(limit, end, start);
+    start = normalizeRangeStart(limit, start);
+    end = normalizeRangeEnd(limit, end, start);
     for (let i = start; i < end; i++) {
       this.patchComponent(i, value);
     }
@@ -179,12 +202,110 @@ export class ReactiveArray<T> extends ReactiveContainer<Array<T>> {
   }
 
   /**
-   * Reactive {@link !Array.copyWithin }.
+   * Reactive {@link !array.swapElement}
    */
-  copyWithin(target: number, start: number, end?: number): this {
-    this.value.copyWithin(target, start, end);
-    this.updateSubscribers();
-    return this;
+  swap(value: Unreactive<T>, replacement: Unreactive<T>): T | undefined {
+    return this.swapBy(replacement, equals(value));
+  }
+
+  /**
+   * Reactive {@link !array.swapElementBy}
+   */
+  swapBy(replacement: Unreactive<T>, predicate: DualPredicate<Unreactive<T>>): T | undefined {
+    const i = this.value.findIndex(v => predicate(Reactive.unwrap(v, Reactive.NO_TRACK), replacement));
+    if (i >= 0) {
+      const result = this.value[i];
+      this.patchComponent(i, replacement as any);
+      this.commit();
+      return result;
+    }
+  }
+
+  /**
+   * Reactive {@link !array.swapAllElements}
+   */
+  swapAll(value: Unreactive<T>, replacement: Unreactive<T>): Array<T> {
+    return this.swapAllBy(replacement, equals(value));
+  }
+
+  /**
+   * Reactive {@link !array.swapAllElementsBy}
+   */
+  swapAllBy(replacement: Unreactive<T>, predicate: DualPredicate<Unreactive<T>>): Array<T> {
+    return this.value.filter((v, i) => {
+      const match = predicate(Reactive.unwrap(v, Reactive.NO_TRACK), replacement);
+      if (match) this.patchComponent(i, replacement as any);
+      return match;
+    });
+  }
+
+  /**
+   * Reactive {@link !array.swapOrAddElement}
+   */
+  swapOrAdd(value: Unreactive<T>, replacement: Unreactive<T>): T | undefined {
+    return this.swapOrAddBy(replacement, equals(value));
+  }
+
+  /**
+   * Reactive {@link !array.swapOrAddElementBy}
+   */
+  swapOrAddBy(replacement: Unreactive<T>, predicate: DualPredicate<Unreactive<T>>): T | undefined {
+    const result = this.swapBy(replacement, predicate);
+    if (result === undefined) this.addLast(replacement);
+    return result;
+  }
+
+  /**
+   * Reactive {@link !array.removeElement}
+   */
+  remove(value: Unreactive<T>): T | undefined {
+    return this.removeBy(equals(value));
+  }
+
+  /**
+   * Reactive {@link !array.removeElementBy}
+   */
+  removeBy(predicate: Predicate<Unreactive<T>>): T | undefined {
+    const i = this.value.findIndex(v => predicate(Reactive.unwrap(v, Reactive.NO_TRACK)));
+    if (i >= 0) {
+      const result = this.value[i];
+      this.splice(i, 1);
+      return result;
+    }
+  }
+
+  /**
+   * Reactive {@link !array.removeAllElements}
+   */
+  removeAll(value: Unreactive<T>): Array<T> {
+    return this.removeAllBy(equals(value));
+  }
+
+  /**
+   * Reactive {@link !array.removeAllElementsBy}
+   */
+  removeAllBy(predicate: Predicate<Unreactive<T>>): Array<T> {
+    return this.value.filter((v, i) => {
+      const match = predicate(Reactive.unwrap(v, Reactive.NO_TRACK));
+      if (match) this.splice(i, 1);
+      return match;
+    });
+  }
+
+  /**
+   * Reactive {@link !array.toggleElement}
+   */
+  toggle(value: Unreactive<T>): T | undefined {
+    return this.toggleBy(value, equals(value));
+  }
+
+  /**
+   * Reactive {@link !array.toggleElementBy}
+   */
+  toggleBy(value: Unreactive<T>, predicate: DualPredicate<Unreactive<T>>): T | undefined {
+    const result = this.removeBy(v => predicate(v, value));
+    if (result === undefined) this.addLast(value);
+    return result;
   }
 
   clone(): ReactiveArray<T> {
