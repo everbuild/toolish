@@ -1,7 +1,7 @@
+import { Unreactive } from './base';
 import { ComponentFactory, ReactiveContainer } from './container';
-import { ReactiveDerivative } from './derivative';
 import { ReactiveFactory } from './internal';
-import type { PatchSource,ReactiveValue } from './value';
+import type { PatchSource, ReactiveValue } from './value';
 
 export interface PropertyRemover {
   (value: Record<keyof any, any>, key: keyof any): void;
@@ -30,29 +30,22 @@ export class ReactiveObject<T extends object> extends ReactiveContainer<T> {
    */
   patch(source: PatchSource<T>): void {
     const allKeys = Object.keys({ ...this.value, ...source }) as Array<keyof T>;
-    allKeys.forEach(k => k in source ? this.patchComponent(k, (source as any)[k]) : this.doRemoveProperty(k));
+    allKeys.forEach(k => k in source ? this.patchComponent(k, (source as any)[k]) : this.doRemove(k));
     this.commit();
   }
 
-  /**
-   * Alias for {@link Reactive.select:ONE}
-   */
-  getProperty<K extends keyof T>(key: K): ReactiveDerivative<T[K]> {
-    return this.select(key);
-  }
-
-  setProperty<K extends keyof T>(key: K, value: PatchSource<T[K]>): this {
+  assign<K extends keyof T>(key: K, value: Unreactive<T[K]>): this {
     this.patchComponent(key, value);
     this.commit();
     return this;
   }
 
-  removeProperty(key: keyof T): void {
-    this.doRemoveProperty(key);
+  remove(key: keyof T): void {
+    this.doRemove(key);
     this.commit();
   }
 
-  private doRemoveProperty(key: keyof T): void {
+  private doRemove(key: keyof T): void {
     if (key in this.value) {
       ReactiveObject.REMOVAL_STRATEGY(this.value, key);
       this.dirty = true;

@@ -1,11 +1,10 @@
-import { mirrorIndex, normalizeRangeEnd, normalizeRangeLength, normalizeRangeStart } from '../array';
+import { normalizeRangeEnd, normalizeRangeLength, normalizeRangeStart } from '../array';
 import { equals } from '../general';
 import { DualPredicate, Predicate } from '../types';
 import { Reactive, Unreactive } from './base';
 import { ComponentFactory, ReactiveContainer } from './container';
-import { ReactiveDerivative } from './derivative';
-import { ReactiveFactory } from './internal';
-import type { PatchSource, ReactiveValue } from './value';
+import { NO_TRACK, ReactiveFactory } from './internal';
+import { PatchSource, ReactiveValue } from './value';
 
 export type ElementFactory<T> = (value: Unreactive<T>, key: number) => T;
 
@@ -46,26 +45,9 @@ export class ReactiveArray<T> extends ReactiveContainer<Array<T>> {
    * @see {@link ReactiveValue.patch} for more details.
    */
   patch(source: PatchSource<Array<T>>): void {
-    source.forEach((v, i) => this.patchComponent(i, v));
+    source.forEach((v, i) => this.patchComponent(i, v as any));
     this.truncate(source.length);
     this.commit();
-  }
-
-  /**
-   * Alias for {@link Reactive.select:ONE}
-   */
-  getAt(index: number): ReactiveDerivative<T> {
-    return this.select(index);
-  }
-
-  /**
-   * Updates the element at the given index.
-   * You can use a negative index to {@link array.mirrorIndex | count back from the end}.
-   */
-  setAt(index: number, value: PatchSource<T>): this {
-    this.patchComponent(mirrorIndex(this.value.length, index), value);
-    this.commit();
-    return this;
   }
 
   /**
@@ -150,7 +132,7 @@ export class ReactiveArray<T> extends ReactiveContainer<Array<T>> {
   }
 
   private kick(i: number): Unreactive<T> | undefined {
-    const result = Reactive.unwrap(this.value[i], Reactive.NO_TRACK);
+    const result = Reactive.unwrap(this.value[i], NO_TRACK);
     this.removeAt(i);
     return result;
   }
@@ -190,7 +172,7 @@ export class ReactiveArray<T> extends ReactiveContainer<Array<T>> {
   /**
    * Reactive {@link !Array.fill}.
    */
-  fill(value: PatchSource<T>, start?: number, end?: number): this {
+  fill(value: Unreactive<T>, start?: number, end?: number): this {
     const limit = this.value.length;
     start = normalizeRangeStart(limit, start);
     end = normalizeRangeEnd(limit, end, start);
@@ -204,18 +186,18 @@ export class ReactiveArray<T> extends ReactiveContainer<Array<T>> {
   /**
    * Reactive {@link !array.swapElement}
    */
-  swap(value: Unreactive<T>, replacement: Unreactive<T>): T | undefined {
+  swap(value: Unreactive<T>, replacement: Unreactive<T>): Unreactive<T> | undefined {
     return this.swapBy(replacement, equals(value));
   }
 
   /**
    * Reactive {@link !array.swapElementBy}
    */
-  swapBy(replacement: Unreactive<T>, predicate: DualPredicate<Unreactive<T>>): T | undefined {
-    const i = this.value.findIndex(v => predicate(Reactive.unwrap(v, Reactive.NO_TRACK), replacement));
+  swapBy(replacement: Unreactive<T>, predicate: DualPredicate<Unreactive<T>>): Unreactive<T> | undefined {
+    const i = this.value.findIndex(v => predicate(Reactive.unwrap(v, NO_TRACK), replacement));
     if (i >= 0) {
-      const result = this.value[i];
-      this.patchComponent(i, replacement as any);
+      const result = Reactive.unwrap(this.value[i], NO_TRACK);
+      this.patchComponent(i, replacement);
       this.commit();
       return result;
     }
@@ -224,32 +206,34 @@ export class ReactiveArray<T> extends ReactiveContainer<Array<T>> {
   /**
    * Reactive {@link !array.swapAllElements}
    */
-  swapAll(value: Unreactive<T>, replacement: Unreactive<T>): Array<T> {
+  swapAll(value: Unreactive<T>, replacement: Unreactive<T>): Array<Unreactive<T>> {
     return this.swapAllBy(replacement, equals(value));
   }
 
   /**
    * Reactive {@link !array.swapAllElementsBy}
    */
-  swapAllBy(replacement: Unreactive<T>, predicate: DualPredicate<Unreactive<T>>): Array<T> {
-    return this.value.filter((v, i) => {
-      const match = predicate(Reactive.unwrap(v, Reactive.NO_TRACK), replacement);
-      if (match) this.patchComponent(i, replacement as any);
-      return match;
-    });
+  swapAllBy(replacement: Unreactive<T>, predicate: DualPredicate<Unreactive<T>>): Array<Unreactive<T>> {
+    return this.value
+      .map(v => Reactive.unwrap(v, NO_TRACK))
+      .filter((v, i) => {
+        const match = predicate(v, replacement);
+        if (match) this.patchComponent(i, replacement);
+        return match;
+      });
   }
 
   /**
    * Reactive {@link !array.swapOrAddElement}
    */
-  swapOrAdd(value: Unreactive<T>, replacement: Unreactive<T>): T | undefined {
+  swapOrAdd(value: Unreactive<T>, replacement: Unreactive<T>): Unreactive<T> | undefined {
     return this.swapOrAddBy(replacement, equals(value));
   }
 
   /**
    * Reactive {@link !array.swapOrAddElementBy}
    */
-  swapOrAddBy(replacement: Unreactive<T>, predicate: DualPredicate<Unreactive<T>>): T | undefined {
+  swapOrAddBy(replacement: Unreactive<T>, predicate: DualPredicate<Unreactive<T>>): Unreactive<T> | undefined {
     const result = this.swapBy(replacement, predicate);
     if (result === undefined) this.addLast(replacement);
     return result;
@@ -258,17 +242,17 @@ export class ReactiveArray<T> extends ReactiveContainer<Array<T>> {
   /**
    * Reactive {@link !array.removeElement}
    */
-  remove(value: Unreactive<T>): T | undefined {
+  remove(value: Unreactive<T>): Unreactive<T> | undefined {
     return this.removeBy(equals(value));
   }
 
   /**
    * Reactive {@link !array.removeElementBy}
    */
-  removeBy(predicate: Predicate<Unreactive<T>>): T | undefined {
-    const i = this.value.findIndex(v => predicate(Reactive.unwrap(v, Reactive.NO_TRACK)));
+  removeBy(predicate: Predicate<Unreactive<T>>): Unreactive<T> | undefined {
+    const i = this.value.findIndex(v => predicate(Reactive.unwrap(v, NO_TRACK)));
     if (i >= 0) {
-      const result = this.value[i];
+      const result = Reactive.unwrap(this.value[i], NO_TRACK);
       this.splice(i, 1);
       return result;
     }
@@ -277,32 +261,34 @@ export class ReactiveArray<T> extends ReactiveContainer<Array<T>> {
   /**
    * Reactive {@link !array.removeAllElements}
    */
-  removeAll(value: Unreactive<T>): Array<T> {
+  removeAll(value: Unreactive<T>): Array<Unreactive<T>> {
     return this.removeAllBy(equals(value));
   }
 
   /**
    * Reactive {@link !array.removeAllElementsBy}
    */
-  removeAllBy(predicate: Predicate<Unreactive<T>>): Array<T> {
-    return this.value.filter((v, i) => {
-      const match = predicate(Reactive.unwrap(v, Reactive.NO_TRACK));
-      if (match) this.splice(i, 1);
-      return match;
-    });
+  removeAllBy(predicate: Predicate<Unreactive<T>>): Array<Unreactive<T>> {
+    return this.value
+      .map(v => Reactive.unwrap(v, NO_TRACK))
+      .filter((v, i) => {
+        const match = predicate(v);
+        if (match) this.splice(i, 1);
+        return match;
+      });
   }
 
   /**
    * Reactive {@link !array.toggleElement}
    */
-  toggle(value: Unreactive<T>): T | undefined {
+  toggle(value: Unreactive<T>): Unreactive<T> | undefined {
     return this.toggleBy(value, equals(value));
   }
 
   /**
    * Reactive {@link !array.toggleElementBy}
    */
-  toggleBy(value: Unreactive<T>, predicate: DualPredicate<Unreactive<T>>): T | undefined {
+  toggleBy(value: Unreactive<T>, predicate: DualPredicate<Unreactive<T>>): Unreactive<T> | undefined {
     const result = this.removeBy(v => predicate(v, value));
     if (result === undefined) this.addLast(value);
     return result;
@@ -314,4 +300,3 @@ export class ReactiveArray<T> extends ReactiveContainer<Array<T>> {
 }
 
 ReactiveFactory.array = (v, cc) => new ReactiveArray(v, cc);
-

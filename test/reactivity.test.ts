@@ -37,7 +37,7 @@ test('nest object', () => {
   expect(nested.unwrap().a).toBeInstanceOf(ReactiveValue);
   expect(nested.unwrap().a.unwrap()).toBe(1);
   expect(nested.select('a')).toBeInstanceOf(ReactiveDerivative);
-  expect(nested.getProperty('a').unwrap()).toBe(1);
+  expect(nested.select('a').unwrap()).toBe(1);
   expect(nested.unwrap().b).toBeInstanceOf(ReactiveArray);
   expect(nested.unwrap().b.unwrap()[0]).toBe(2);
   expect(nested.select('b')).toBeInstanceOf(ReactiveDerivative);
@@ -154,15 +154,15 @@ test('array', () => {
 test('object', () => {
   const reactive = Reactive.of<{ a?: number; b?: { c?: number } }>({});
   expect(reactive.unwrap()).toEqual({});
-  reactive.setProperty('a', 1);
+  reactive.assign('a', 1);
   expect(reactive.unwrap()).toEqual({ a: 1 });
-  reactive.removeProperty('a');
+  reactive.remove('a');
   expect(reactive.unwrap()).toEqual({});
 
   reactive.patch({ b: { c: 2 } });
   expect(reactive.unwrap()).toEqual({ b: { c: 2 } });
 
   ReactiveObject.REMOVAL_STRATEGY = (v, k) => v[k] = -1;
-  reactive.removeProperty('a');
+  reactive.remove('a');
   expect(reactive.unwrap().a).toBe(-1);
 });

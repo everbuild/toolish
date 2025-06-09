@@ -1,10 +1,14 @@
 import { Cloneable } from '../general';
 import type { ReactiveArray } from './array';
-import { MaybeReactive, Reactive } from './base';
+import { Reactive } from './base';
 import { ReactiveFactory } from './internal';
 import type { ReactiveObject } from './object';
 
-export type PatchSource<T> = T extends Reactive<infer V> ? PatchSource<V> : T extends Array<infer E> ? Array<PatchSource<E>> : T extends object ? { [K in keyof T]: PatchSource<T[K]> } : MaybeReactive<T>;
+export type PatchSource<T> =
+  T extends Reactive<infer V> ? PatchSource<V> :
+    T extends Array<infer E> ? Array<PatchSource<E>> :
+      T extends object ? { [K in keyof T]?: PatchSource<T[K]> } :
+        T;
 
 /**
  * Wraps any value, but primarily intended for primitives.
@@ -53,7 +57,7 @@ export class ReactiveValue<T> extends Reactive<T> implements Cloneable<ReactiveV
    * @see {@link ReactiveObject.patch} and {@link ReactiveArray.patch}
    */
   patch(source: PatchSource<T>): void {
-    this.set(Reactive.unwrap(source, Reactive.NO_TRACK) as T);
+    this.set(source as T);
   }
 
   clone(): ReactiveValue<T> {

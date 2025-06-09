@@ -240,7 +240,7 @@ export abstract class Reactive<T> implements Publisher {
   abstract unwrap(): T;
 
   /**
-   * {@link Reactive.unnest:static Unnest} this instance.
+   * {@link Reactive.unnest:STATIC Unnest} this instance.
    */
   unnest(tracker: SubscriptionTracker): UnreactiveNested<T> {
     return Reactive.unnest(this as Reactive<T>, tracker);
