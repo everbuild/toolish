@@ -56,12 +56,13 @@ export class ReactiveValue<T> extends Reactive<T> implements Cloneable<ReactiveV
    *
    * @see {@link ReactiveObject.patch} and {@link ReactiveArray.patch}
    */
-  patch(source: PatchSource<T>): void {
+  patch(source: PatchSource<T>): this {
     this.set(source as T);
+    return this;
   }
 
   clone(): ReactiveValue<T> {
-    return new ReactiveValue<T>(this.value);
+    return new ReactiveValue(this.value);
   }
 }
 

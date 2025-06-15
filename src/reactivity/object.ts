@@ -1,5 +1,5 @@
 import { Unreactive } from './base';
-import { ComponentFactory, ReactiveContainer } from './container';
+import { ComponentPatchConverter, ComponentWrapper, ReactiveContainer } from './container';
 import { ReactiveFactory } from './internal';
 import type { PatchSource, ReactiveValue } from './value';
 
@@ -13,9 +13,10 @@ export interface PropertyRemover {
 export class ReactiveObject<T extends object> extends ReactiveContainer<T> {
   constructor(
     value: T,
-    createProperty: ComponentFactory<T>,
+    wrapProperty: ComponentWrapper<T>,
+    convertPatchSource: ComponentPatchConverter<T>,
   ) {
-    super(value, createProperty);
+    super(value, wrapProperty, convertPatchSource);
   }
 
   /**
@@ -28,14 +29,15 @@ export class ReactiveObject<T extends object> extends ReactiveContainer<T> {
    * @see {@link REMOVAL_STRATEGY} to tweak how properties are removed.
    * @see {@link ReactiveValue.patch} for more details.
    */
-  patch(source: PatchSource<T>): void {
+  patch(source: PatchSource<T>): this {
     const allKeys = Object.keys({ ...this.value, ...source }) as Array<keyof T>;
     allKeys.forEach(k => k in source ? this.patchComponent(k, (source as any)[k]) : this.doRemove(k));
     this.commit();
+    return this;
   }
 
   assign<K extends keyof T>(key: K, value: Unreactive<T[K]>): this {
-    this.patchComponent(key, value);
+    this.setComponent(key, value);
     this.commit();
     return this;
   }
@@ -53,8 +55,8 @@ export class ReactiveObject<T extends object> extends ReactiveContainer<T> {
   }
 
   clone(): ReactiveObject<T> {
-    return new ReactiveObject(this.value, this.createComponent);
+    return new ReactiveObject(this.value, this.wrapComponent, this.convertPatchSource);
   }
 }
 
-ReactiveFactory.object = (o, pf) => new ReactiveObject(o, pf);
+ReactiveFactory.object = (o, w, c) => new ReactiveObject(o, w, c);

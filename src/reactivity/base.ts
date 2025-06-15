@@ -2,10 +2,10 @@ import { mirrorIndex } from '../array';
 import { Cancel, passThrough } from '../general';
 import { isObject, mapProperties } from '../object';
 import { Consumer, GenericFunction, isPresent, Transformation } from '../types';
-import type { ElementFactory, ReactiveArray } from './array';
+import type { PatchElementConverter, ReactiveArray } from './array';
 import { ReactiveCache, WeakReactiveCache } from './cache';
 import { ReactiveConsumer } from './consumer';
-import type { ComponentFactory } from './container';
+import { ComponentPatchConverter } from './container';
 import type { Derivation, ReactiveDerivative } from './derivative';
 import { NO_CACHE, NO_TRACK, ReactiveFactory } from './internal';
 import type { ReactiveObject } from './object';
@@ -16,7 +16,7 @@ export type MaybeReactive<T> = T | Reactive<T>;
 
 export type Unreactive<T> = T extends Reactive<infer V> ? Unreactive<V> : T;
 
-export type ReactiveVariant<T> = T extends Reactive<any> ? T : T extends Array<infer E> ? ReactiveArray<E> : T extends object ? ReactiveObject<{ [K in keyof T]: T[K] }> : ReactiveValue<T>;
+export type ReactiveVariant<T> = T extends Reactive<any> ? T : T extends Array<infer E> ? ReactiveArray<E> : T extends object ? ReactiveObject<T> : ReactiveValue<T>;
 
 export type UnreactiveNested<T> = T extends Reactive<infer V> ? UnreactiveNested<V> : T extends Array<infer E> ? Array<UnreactiveNested<E>> : T extends object ? { [K in keyof T]: UnreactiveNested<T[K]> } : T;
 
@@ -38,9 +38,9 @@ export abstract class Reactive<T> implements Publisher {
   private subscribers = new Set<Subscriber>();
 
   /**
-   * Like {@link Reactive.of:VALUE} but just expresses that any already reactive value is returned as is.
+   * Calling {@link Reactive.of} with a value that is already reactive just returns it as is.
    */
-  static of<T extends Reactive<any>>(source: T): T;
+  static of<T extends Reactive<any>>(source: T, ...rest: Array<any>): T;
 
   /**
    * Like {@link Reactive.of:VALUE} but wraps an array as a {@link ReactiveArray}.
@@ -49,9 +49,9 @@ export abstract class Reactive<T> implements Publisher {
   static of<T>(source: Array<T>, cache?: ReactiveCache): ReactiveArray<T>;
 
   /**
-   * Like {@link Reactive.of:ARRAY} but allows specifying how elements are created.
+   * Like {@link Reactive.of:ARRAY} but allows specifying how data passed to {@link ReactiveArray.patch} should be converted to elements.
    */
-  static of<T>(source: Array<T>, createElement: ElementFactory<T>, cache?: ReactiveCache): ReactiveArray<T>;
+  static of<T>(source: Array<T>, convertElement: PatchElementConverter<T>, cache?: ReactiveCache): ReactiveArray<T>;
 
   /**
    * Like {@link Reactive.of:VALUE} but wraps an object as a {@link ReactiveObject}.
@@ -60,9 +60,9 @@ export abstract class Reactive<T> implements Publisher {
   static of<T extends object>(source: T, cache?: ReactiveCache): ReactiveObject<T>;
 
   /**
-   * Like {@link Reactive.of:OBJECT} but allows specifying how property values are created.
+   * Like {@link Reactive.of:OBJECT} but allows specifying how data passed to {@link ReactiveObject.patch} should be converted to properties.
    */
-  static of<T extends object>(source: T, createProperty: ComponentFactory<T>, cache?: ReactiveCache): ReactiveObject<T>;
+  static of<T extends object>(source: T, convertProperty: ComponentPatchConverter<T>, cache?: ReactiveCache): ReactiveObject<T>;
 
   /**
    * Wraps the given value as a {@link ReactiveValue}.
@@ -76,14 +76,14 @@ export abstract class Reactive<T> implements Publisher {
 
   static of(source: any, ...rest: Array<any>): any {
     if (source instanceof Reactive) return source;
-    const cache: ReactiveCache = rest.pop() || Reactive.DIRECT_CACHE;
-    const createComponent = rest.pop() || passThrough;
+    const convertPatchSource = typeof rest[0] === 'function' ? rest.shift() : passThrough;
+    const cache = rest.shift() || Reactive.DIRECT_CACHE;
     let result = cache.get(source);
     if (!result) {
       if (Array.isArray(source)) {
-        result = ReactiveFactory.array(source, createComponent);
+        result = ReactiveFactory.array(source, passThrough, convertPatchSource);
       } else if (isObject(source)) {
-        result = ReactiveFactory.object(source, createComponent);
+        result = ReactiveFactory.object(source, passThrough as any, convertPatchSource);
       } else {
         result = ReactiveFactory.value(source);
       }
@@ -93,15 +93,20 @@ export abstract class Reactive<T> implements Publisher {
   }
 
   /**
-   * Like {@link Reactive.nest:OBJECT} but just expresses that any already reactive value is returned as is, without nesting.
+   * Calling {@link Reactive.nest} with a value that is already reactive just returns it as is, without any nesting.
    */
-  static nest<T extends Reactive<any>>(source: T): T;
+  static nest<T extends Reactive<any>>(source: T, ...rest: Array<any>): T;
 
   /**
    * Like {@link Reactive.nest:OBJECT} but for arrays.
    * {@label ARRAY}
    */
   static nest<T>(source: Array<T>, arrayCache?: ReactiveCache, elementCache?: ReactiveCache): ReactiveArray<ReactiveVariant<T>>;
+
+  /**
+   * Like {@link Reactive.nest:OBJECT_CONVERT} but for arrays.
+   */
+  static nest<T>(source: Array<T>, convertElement: PatchElementConverter<T>, arrayCache?: ReactiveCache, elementCache?: ReactiveCache): ReactiveArray<ReactiveVariant<T>>;
 
   /**
    * Like {@link Reactive.of:OBJECT} but also makes all properties reactive.
@@ -115,13 +120,32 @@ export abstract class Reactive<T> implements Publisher {
    */
   static nest<T extends object>(source: T, objectCache?: ReactiveCache, propertyCache?: ReactiveCache): ReactiveObject<{ [K in keyof T]: ReactiveVariant<T[K]> }>;
 
-  static nest(source: any, parentCache = this.NESTED_CACHE, childCache?: ReactiveCache): any {
+  /**
+   * Like {@link Reactive.nest:OBJECT} but allows specifying how data passed to {@link ReactiveObject.patch} should be converted to properties.
+   * {@label OBJECT_CONVERT}
+   */
+  static nest<T extends object>(source: T, convertProperty: ComponentPatchConverter<T>, objectCache?: ReactiveCache, propertyCache?: ReactiveCache): ReactiveObject<ReactiveVariant<T>>;
+
+  /**
+   * Calling {@link Reactive.nest} with a value that is neither an object nor an array has the same effect as {@link Reactive.of:VALUE}.
+   */
+  static nest<T>(source: T, ...rest: Array<any>): ReactiveValue<T>;
+
+  static nest(source: any, ...rest: Array<any>): any {
     if (source instanceof Reactive) return source;
+    const convert = typeof rest[0] === 'function' ? rest.shift() : passThrough;
+    const parentCache = rest.shift() || Reactive.NESTED_CACHE;
+    const childCache = rest.shift() || Reactive.DIRECT_CACHE;
     let result = parentCache.get(source);
     if (!result) {
-      const componentFactory = (v: any) => Reactive.of(v, childCache);
-      const nested: any = Array.isArray(source) ? source.map(componentFactory) : mapProperties(source, componentFactory);
-      result = Reactive.of(nested, componentFactory, NO_CACHE);
+      const wrap = (v: any) => Reactive.of(v, childCache);
+      if (Array.isArray(source)) {
+        result = ReactiveFactory.array(source.map(wrap), wrap, convert);
+      } else if (isObject(source)) {
+        result = ReactiveFactory.object(mapProperties(source, wrap), wrap, convert);
+      } else {
+        result = ReactiveFactory.value(source);
+      }
       parentCache.set(source, result);
     }
     return result;
@@ -275,27 +299,27 @@ export abstract class Reactive<T> implements Publisher {
    *
    *  @param key property name or index
    */
-  select<K extends keyof T>(key: K): ReactiveDerivative<T[K]>;
+  select<K extends keyof T>(key: K): ReactiveDerivative<Unreactive<T[K]>>;
 
   /**
    * {@link Reactive.select:ONE | Select} 2 levels deep
    */
-  select<K1 extends keyof T, T2 extends Unreactive<T[K1]>, K2 extends keyof T2>(key1: K1, key2: K2): ReactiveDerivative<T2[K2]>;
+  select<K1 extends keyof T, T2 extends Unreactive<T[K1]>, K2 extends keyof T2>(key1: K1, key2: K2): ReactiveDerivative<Unreactive<T2[K2]>>;
 
   /**
    * {@link Reactive.select:ONE | Select} 3 levels deep
    */
-  select<K1 extends keyof T, T2 extends Unreactive<T[K1]>, K2 extends keyof T2, T3 extends Unreactive<T2[K2]>, K3 extends keyof T3>(key1: K1, key2: K2, key3: K3): ReactiveDerivative<T3[K3]>;
+  select<K1 extends keyof T, T2 extends Unreactive<T[K1]>, K2 extends keyof T2, T3 extends Unreactive<T2[K2]>, K3 extends keyof T3>(key1: K1, key2: K2, key3: K3): ReactiveDerivative<Unreactive<T3[K3]>>;
 
   /**
    * {@link Reactive.select:ONE | Select} 4 levels deep
    */
-  select<K1 extends keyof T, T2 extends Unreactive<T[K1]>, K2 extends keyof T2, T3 extends Unreactive<T2[K2]>, K3 extends keyof T3, T4 extends Unreactive<T3[K3]>, K4 extends keyof T4>(key1: K1, key2: K2, key3: K3, key4: K4): ReactiveDerivative<T4[K4]>;
+  select<K1 extends keyof T, T2 extends Unreactive<T[K1]>, K2 extends keyof T2, T3 extends Unreactive<T2[K2]>, K3 extends keyof T3, T4 extends Unreactive<T3[K3]>, K4 extends keyof T4>(key1: K1, key2: K2, key3: K3, key4: K4): ReactiveDerivative<Unreactive<T4[K4]>>;
 
   /**
    * {@link Reactive.select:ONE | Select} 5 levels deep
    */
-  select<K1 extends keyof T, T2 extends Unreactive<T[K1]>, K2 extends keyof T2, T3 extends Unreactive<T2[K2]>, K3 extends keyof T3, T4 extends Unreactive<T3[K3]>, K4 extends keyof T4, T5 extends Unreactive<T4[K4]>, K5 extends keyof T5>(key1: K1, key2: K2, key3: K3, key4: K4, key5: K5): ReactiveDerivative<T5[K5]>;
+  select<K1 extends keyof T, T2 extends Unreactive<T[K1]>, K2 extends keyof T2, T3 extends Unreactive<T2[K2]>, K3 extends keyof T3, T4 extends Unreactive<T3[K3]>, K4 extends keyof T4, T5 extends Unreactive<T4[K4]>, K5 extends keyof T5>(key1: K1, key2: K2, key3: K3, key4: K4, key5: K5): ReactiveDerivative<Unreactive<T5[K5]>>;
 
   /**
    * {@link Reactive.select:ONE | Select} more than 5 levels deep without type checking.
@@ -305,9 +329,8 @@ export abstract class Reactive<T> implements Publisher {
 
   select(...keys: Array<keyof any>): ReactiveDerivative<any> {
     return Reactive.derive(t => {
-      let value: any = this;
+      let value: any = this.get(t);
       for (const key of keys) {
-        value = Reactive.unwrap(value, t);
         if (Array.isArray(value)) {
           value = value[mirrorIndex(Number(key), value.length)];
         } else if (isPresent(value)) {
@@ -315,6 +338,7 @@ export abstract class Reactive<T> implements Publisher {
         } else {
           throw new Error(`invalid selection: ${keys.join(' / ')}`);
         }
+        value = Reactive.unwrap(value, t);
       }
       return value;
     });

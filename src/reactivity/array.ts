@@ -2,11 +2,12 @@ import { normalizeRangeEnd, normalizeRangeLength, normalizeRangeStart } from '..
 import { equals } from '../general';
 import { DualPredicate, Predicate } from '../types';
 import { Reactive, Unreactive } from './base';
-import { ComponentFactory, ReactiveContainer } from './container';
+import { ComponentPatchConverter, ComponentWrapper, ReactiveContainer } from './container';
 import { NO_TRACK, ReactiveFactory } from './internal';
 import { PatchSource, ReactiveValue } from './value';
 
-export type ElementFactory<T> = (value: Unreactive<T>, key: number) => T;
+export type ElementWrapper<T> = (value: Unreactive<T>) => T;
+export type PatchElementConverter<T> = (value: PatchSource<T>) => Unreactive<T>;
 
 /**
  * Wraps an array, supports {@link patch} and offers convenience methods to reactively mutate the array.
@@ -35,19 +36,21 @@ export type ElementFactory<T> = (value: Unreactive<T>, key: number) => T;
 export class ReactiveArray<T> extends ReactiveContainer<Array<T>> {
   constructor(
     value: Array<T>,
-    private createElement: ElementFactory<T>,
+    private wrapElement: ElementWrapper<T>,
+    private convertElement: PatchElementConverter<T>,
   ) {
-    super(value, createElement as ComponentFactory<Array<T>>);
+    super(value, wrapElement as ComponentWrapper<Array<T>>, convertElement as ComponentPatchConverter<Array<T>>);
   }
 
   /**
    * Patches, adds or removes elements as needed to match the given source array.
    * @see {@link ReactiveValue.patch} for more details.
    */
-  patch(source: PatchSource<Array<T>>): void {
+  patch(source: PatchSource<Array<T>>): this {
     source.forEach((v, i) => this.patchComponent(i, v as any));
     this.truncate(source.length);
     this.commit();
+    return this;
   }
 
   /**
@@ -164,7 +167,7 @@ export class ReactiveArray<T> extends ReactiveContainer<Array<T>> {
 
   private doSplice(index: number, removeCount: number, insertValues: Array<any> = []): void {
     if (removeCount > 0 || insertValues.length > 0) {
-      this.value.splice(index, removeCount, ...insertValues.map(((v, i) => this.createElement(v, i))));
+      this.value.splice(index, removeCount, ...insertValues.map(this.wrapElement));
       this.dirty = true;
     }
   }
@@ -177,7 +180,7 @@ export class ReactiveArray<T> extends ReactiveContainer<Array<T>> {
     start = normalizeRangeStart(limit, start);
     end = normalizeRangeEnd(limit, end, start);
     for (let i = start; i < end; i++) {
-      this.patchComponent(i, value);
+      this.setComponent(i, value);
     }
     this.commit();
     return this;
@@ -197,7 +200,7 @@ export class ReactiveArray<T> extends ReactiveContainer<Array<T>> {
     const i = this.value.findIndex(v => predicate(Reactive.unwrap(v, NO_TRACK), replacement));
     if (i >= 0) {
       const result = Reactive.unwrap(this.value[i], NO_TRACK);
-      this.patchComponent(i, replacement);
+      this.patchComponent(i, replacement as any);
       this.commit();
       return result;
     }
@@ -218,7 +221,7 @@ export class ReactiveArray<T> extends ReactiveContainer<Array<T>> {
       .map(v => Reactive.unwrap(v, NO_TRACK))
       .filter((v, i) => {
         const match = predicate(v, replacement);
-        if (match) this.patchComponent(i, replacement);
+        if (match) this.patchComponent(i, replacement as any);
         return match;
       });
   }
@@ -295,8 +298,8 @@ export class ReactiveArray<T> extends ReactiveContainer<Array<T>> {
   }
 
   clone(): ReactiveArray<T> {
-    return new ReactiveArray(this.value, this.createElement);
+    return new ReactiveArray(this.value, this.wrapElement, this.convertElement);
   }
 }
 
-ReactiveFactory.array = (v, cc) => new ReactiveArray(v, cc);
+ReactiveFactory.array = (v, w, c) => new ReactiveArray(v, w, c);

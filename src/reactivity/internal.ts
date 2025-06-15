@@ -1,9 +1,9 @@
 import { ignore } from '../general';
-import type { ElementFactory, ReactiveArray } from './array';
+import type { ElementWrapper, PatchElementConverter, ReactiveArray } from './array';
 import type { ReactiveCache } from './cache';
-import type { ComponentFactory } from './container';
+import type { ComponentPatchConverter, ComponentWrapper } from './container';
 import type { Derivation, ReactiveDerivative } from './derivative';
-import type {  ReactiveObject } from './object';
+import type { ReactiveObject } from './object';
 import type { SubscriptionTracker } from './publisher';
 import type { ReactiveValue } from './value';
 
@@ -16,11 +16,11 @@ export const ReactiveFactory = {
     throw new Error('value not implemented');
   },
 
-  array<T>(value: Array<T>, createElement: ElementFactory<T>): ReactiveArray<T> {
+  array<T>(value: Array<T>, wrapElement: ElementWrapper<T>, convertElement: PatchElementConverter<T>): ReactiveArray<T> {
     throw new Error('array not implemented');
   },
 
-  object<T extends object>(value: T, createProperty: ComponentFactory<T>): ReactiveObject<T> {
+  object<T extends object>(value: T, wrapProperty: ComponentWrapper<T>, convertPatchSource: ComponentPatchConverter<T>): ReactiveObject<T> {
     throw new Error('object not implemented');
   },
 
