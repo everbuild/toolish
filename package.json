@@ -4,8 +4,10 @@
   "description": "A modest collection of JS/TS utilities",
   "type": "module",
   "files": [
-    "dist"
+    "dist",
+    "tsconfig"
   ],
+  "tsconfig": "tsconfig.json",
   "scripts": {
     "update-exports": "node ./update-exports.js",
     "prebuild": "rm -rf ./dist",
